@@ -1,0 +1,25 @@
+{
+  "_how_to_use": "Copy this file, rename it (e.g. test_case_2.json, the name must NOT start with _), fill it in. Files starting with _ are ignored. Every .json file in this folder is a test case the bot can pick. Optional: add \"start_url\": \"https://...\" to start this case on a different page than bot_settings.json's start_url.",
+  "name": "Wireless Quote",
+  "description": "Normallyw ill be used",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Hi, I wanna a quote for switching",
+    "one second please",
+    "I'm looking for a quote to bring my lines to you from Verizon, I have 6 phones 2 Tablets and 1 Watch, I'll bring the Tablets and the Watch with me, as for the phones, please listen carefully. I want an iphone 17e 256 Black with next up on value 2.0 plan and an iphone 17 pro Blue and pro max Orange 512 GB on the extra 2.0 plan, lastlty 3 iphone 18 pro 256GB Burgundy, 512GB Black and 1TB Silver, I'll trade iphone 15 in a perfect condition with nothing broken except for on it has a broken back glass for each of them and I want them on premium 2.0 plan to get the max credit and the 50% discount on the watch and the tablet, also add next up on each of them and ofcourse a family protection plan, what I couldn't figure it out myself is how much is the bill with my signature discount via Amazon and how much teh bill will be with taxes, I don't need to tell you ofcourse that the $200 must be added to the bill and also no activation fees, it must be waived, but let's focus on the bil for now first",
+    "sure take your time.",
+    "I want teh quote with my signature discount and my husband's military discount, please",
+    "okay",
+    "actually it's kinda of high, thanks for your time, bye."
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": 5,
+    "resolved": "yes",
+    "comment": "nA"
+  }
+}
