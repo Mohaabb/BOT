@@ -1,0 +1,58 @@
+name: QA bot
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 min (UTC). The gate job checks the Sheet's run window, so you never edit this.
+  workflow_dispatch: {}      # adds a "Run workflow" button for manual starts
+
+# Only one QA run at a time: while workers are running, the next scheduled run waits instead of doubling them.
+concurrency:
+  group: qa-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  QA_MODE: github                       # masks agent IDs/names in the (public) logs, exits when the window ends
+  QA_SHEET_CSV_URL: ${{ secrets.QA_SHEET_CSV_URL }}
+  QA_COUNTER_URL: ${{ secrets.QA_COUNTER_URL }}
+  QA_COUNTER_TOKEN: ${{ secrets.QA_COUNTER_TOKEN }}
+
+jobs:
+  gate:
+    name: Check the Sheet (window, enabled, quotas, parallel_runs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      open: ${{ steps.gate.outputs.open }}
+      workers: ${{ steps.gate.outputs.workers }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - id: gate
+        run: python qa_bot.py --gate-output
+
+  chat:
+    name: Worker ${{ matrix.worker }}
+    needs: gate
+    if: needs.gate.outputs.open == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350                # GitHub's limit is 360; the worker exits by itself when the window ends
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: ${{ fromJSON(needs.gate.outputs.workers) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: command -v xvfb-run || sudo apt-get install -y xvfb
+      - name: Run chats
+        run: xvfb-run -a python qa_bot.py --worker ${{ matrix.worker }} --browser chromium
