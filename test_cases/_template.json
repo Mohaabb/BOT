@@ -1,0 +1,24 @@
+{
+  "_how_to_use": "Copy this file, rename it (e.g. test_case_2.json, the name must NOT start with _), fill it in. Files starting with _ are ignored. Every .json file in this folder is a test case the bot can pick. Optional: add \"start_url\": \"https://...\" to start this case on a different page than bot_settings.json's start_url. auto_answer_buttons: buttons the bot clicks if the site asks a yes/no question (e.g. 'do you need help with anything else?'); default [\"No\"]; [] turns it off.",
+  "name": "Short name shown in the report, e.g. Wireless - Shopping - iPhone quote",
+  "description": "Optional notes for yourself.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "First message (sent after the agent's greeting + reply_delay_seconds)",
+    "Second message (sent after the agent's next reply + reply_delay_seconds)",
+    "Last message, e.g. thank you for your time, bye"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": 5,
+    "resolved": "yes",
+    "comment": "Good Service, thanks or a human"
+  },
+  "auto_answer_buttons": [
+    "No"
+  ]
+}

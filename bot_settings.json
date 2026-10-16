@@ -1,0 +1,7 @@
+{
+  "_note": "GitHub version: do NOT put links or the token in this file (the repo is public). They go in the repo's Actions secrets: QA_SHEET_CSV_URL, QA_COUNTER_URL, QA_COUNTER_TOKEN. See GUIDE_GITHUB_SETUP.md.",
+  "start_url": "https://www.att.com/support",
+  "test_cases_dir": "test_cases",
+  "test_case_mode": "random",
+  "test_case_file": ""
+}

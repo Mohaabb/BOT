@@ -1,0 +1,25 @@
+{
+  "name": "AT&T Wireless - Shopping - iPhone upgrade quote",
+  "description": "Fixed-script regression case reproduced from a real recorded session (2026-10-05, conversationId c1afef75-ba4e-408d-86a3-7384df5e6984). Proven to reach a live agent and complete the CSAT survey.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Hello Ana, This is Mike",
+    "likewise, I'm looking for a quote to switch from Verizon for 2 lines",
+    "I wanna get 2 new iphone 18 pro, I think it's promoted as $0 right ?",
+    "uhm yes I guess",
+    "iphone 15",
+    "please",
+    "uhmm I think it's too much for me for now",
+    "thank you for your time, bye"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": 5,
+    "resolved": "yes",
+    "comment": "Good Service, thanks or a human"
+  }
+}
