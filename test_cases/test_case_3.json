@@ -1,24 +1,24 @@
 {
-  "_how_to_use": "Copy this file, rename it (e.g. test_case_2.json, the name must NOT start with _), fill it in. Files starting with _ are ignored. Every .json file in this folder is a test case the bot can pick. Optional: add \"start_url\": \"https://...\" to start this case on a different page than bot_settings.json's start_url. auto_answer_buttons: buttons the bot clicks if the site asks a yes/no question (e.g. 'do you need help with anything else?'); default [\"No\"]; [] turns it off.",
-  "name": "Short name shown in the report, e.g. Wireless - Shopping - iPhone quote",
-  "description": "Optional notes for yourself.",
+  "name": "AT&T Wireless - Shopping - iPhone upgrade quote",
+  "description": "Fixed-script regression case reproduced from a real recorded session (2026-10-05, conversationId c1afef75-ba4e-408d-86a3-7384df5e6984). Proven to reach a live agent and complete the CSAT survey.",
   "initial_message": "chat with a live agent",
   "menu_path": [
     "AT&T Wireless",
     "Shopping"
   ],
   "scripted_messages": [
-    "First message (sent after the agent's greeting + reply_delay_seconds)",
-    "Second message (sent after the agent's next reply + reply_delay_seconds)",
-    "Last message, e.g. thank you for your time, bye"
+    "Hi",
+    "likewise, I'm looking for a price for upgrading my iphone 16 pro which has a broken screen to iphone 18 pro 256 GB, what will be my monthly installment? and yes I have the starter SL plan",
+    "sure, tyt",
+    "ohh, okayy, I think it's a little bit high, right? or that's normal prices?",
+    "and what if I fixed my screen? would it matter? also if I changed the plan, would it make a big difference?",
+    "okay",
+    "let me think it again and get back to you, I may fix my screen to get higher credit, have a good one!"
   ],
   "end_chat_button_text": "End chat",
   "survey": {
     "stars": 5,
     "resolved": "yes",
-    "comment": "Good Service, thanks or a human"
-  },
-  "auto_answer_buttons": [
-    "No"
-  ]
+    "comment": "Thanks AT&T"
+  }
 }
