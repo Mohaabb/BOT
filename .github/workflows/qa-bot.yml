@@ -39,7 +39,7 @@ jobs:
     name: Worker ${{ matrix.worker }}
     needs: gate
     if: needs.gate.outputs.open == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 350                # GitHub's limit is 360; the worker exits by itself when the window ends
     strategy:
       fail-fast: false
