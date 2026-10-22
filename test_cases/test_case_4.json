@@ -1,0 +1,24 @@
+{
+  "name": "AT&T Wireless - Shopping - iPhone upgrade quote",
+  "description": "Fixed-script regression case reproduced from a real recorded session (2026-10-05, conversationId c1afef75-ba4e-408d-86a3-7384df5e6984). Proven to reach a live agent and complete the CSAT survey.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Hi",
+    "okay so I'm looking for a price for upgrading my iphone 17 pro which has a broken screen to iphone due 256 GB, what will be my monthly installment? and yes I have the premium plan",
+    "sure, tyt",
+    "ohh, okayy, I think it's a little bit high, or that's normal prices?",
+    "and what if I fixed my screen? would it change the price?",
+    "okay",
+    "let me check it with my husband and get back to you, I'll probably fix my screen to get lower installment, thanks for your help!"
+  , "bye"],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": 5,
+    "resolved": "yes",
+    "comment": "Thanks AT&T"
+  }
+}
