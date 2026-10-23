@@ -1,5 +1,5 @@
 {
-  "name": "AT&T Wireless - Shopping - iPhone upgrade quote",
+  "name": "AT&T Wireless - Shopping - iPhone upgrade quote 2",
   "description": "Fixed-script regression case reproduced from a real recorded session (2026-10-05, conversationId c1afef75-ba4e-408d-86a3-7384df5e6984). Proven to reach a live agent and complete the CSAT survey.",
   "initial_message": "live representative",
   "menu_path": [
