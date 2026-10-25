@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 r"""
-qa_bot.py - automated QA tester for the AT&T live-agent chat.
+qa_bot.py - automated QA tester for the live-agent chat.
 
 Drives a real browser through the chat UI exactly like a person (click, type, read the screen). The site's own
 /v1/ws responses are only READ, to know when the agent has replied; the bot never calls the site's APIs.
@@ -122,6 +122,40 @@ class StepFailed(Exception):
     pass
 
 
+class AgentEnded(BaseException):
+    """The agent closed the chat (or left with nobody taking over) before the script was finished."""
+
+
+class StopNow(BaseException):
+    """Raised at a safe point (never in the middle of a browser command) after Ctrl+C or typing 'stop'."""
+
+
+# stop requests: "now" = end the current chat cleanly and exit; "after_chat" = finish the current chat, then exit
+STOP = {"now": False, "after_chat": False, "force": False, "why": ""}
+
+
+def check_stop():
+    if STOP["now"]:
+        raise StopNow()
+
+
+def install_ctrl_c():
+    import signal
+
+    def _h(signum, frame):
+        if STOP["now"]:
+            STOP["force"] = True
+            raise KeyboardInterrupt          # second Ctrl+C: force-quit
+        STOP["now"] = True
+        STOP["why"] = STOP["why"] or "Ctrl+C"
+        _real_print("\n*** Ctrl+C: ending the current chat cleanly, saving the result, then stopping. "
+                    "(Ctrl+C again = force-quit) ***")
+    try:
+        signal.signal(signal.SIGINT, _h)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 _ID_RE = re.compile(r"\b(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{6}\b")
 
 
@@ -167,6 +201,22 @@ class Runner:
         # bot waits for the agent's next message instead of answering the one you already answered.
         self.turn_mark = 0.0
         self.bot_texts = []             # texts the bot sent, to tell its own messages from yours
+        # timings (seconds since epoch) for the per-chat durations in the Log / Report
+        self.t_menu_done = None         # last menu option clicked = asked for an agent
+        self.t_joined = None            # agent joined
+        self.t_greeting = None          # agent's first message
+        self.t_chat_end = None          # chat closed (X)
+        self.reply_times = []           # seconds the agent took to answer each bot message
+        self._bot_sent_t = None
+        self.transcript_rows = []       # every message, for transcript.txt
+        self.chat_ended = False         # "End chat" was clicked (normal end, skip, or wrap-up)
+        self.agents_seen = []           # agent IDs in the order they appeared (more than one = transfer)
+        self.agents_present = set()
+        self.agent_gone_t = None        # when the last agent left the chat
+        self.remote_ended = False       # the server marked the chat as ended
+        self.agent_ended_chat = False   # the script was cut short because the agent ended the chat
+        self.interrupted = False        # stopped with Ctrl+C / window closed
+        self.committed = False          # result already saved (so a close handler doesn't save it twice)
         # agent targeting (set by the scheduler; None = talk to any agent)
         self.gate = None                # callable(agent_id)->(ok, reason); None = talk to any agent
         self.reserved_agent = None      # agent whose quota slot this chat holds (released when the chat ends)
@@ -191,7 +241,36 @@ class Runner:
     def paused(self):
         return Runner.PAUSED
 
+    def timings(self):
+        end = self.t_chat_end or time.time()
+        r = lambda v: None if v is None else int(round(v))  # noqa: E731
+        return {
+            "duration_total_s": r(end - self.t0),
+            "queue_wait_s": r(self.t_joined - self.t_menu_done) if self.t_joined and self.t_menu_done else None,
+            "chat_duration_s": r(end - self.t_joined) if self.t_joined else None,
+            "first_reply_s": r(self.t_greeting - self.t_joined) if self.t_greeting and self.t_joined else None,
+            "avg_agent_reply_s": r(sum(self.reply_times) / len(self.reply_times)) if self.reply_times else None,
+        }
+
+    @property
+    def transferred_to(self):
+        """The agent the chat ended up with, if it isn't the one who joined first (a transfer)."""
+        firsts = [a for a in self.agents_seen if a]
+        if len(set(firsts)) > 1 and firsts[-1] != firsts[0]:
+            return firsts[-1]
+        if len(set(firsts)) > 1:          # moved away and back: still a transfer, report the other agent
+            return next(a for a in firsts if a != firsts[0])
+        return ""
+
+    def agent_has_ended(self):
+        """True when the server says the chat ended, or the last agent left and nobody joined within 30 s."""
+        return self.remote_ended or (self.agent_gone_t is not None and not self.agents_present
+                                     and time.time() - self.agent_gone_t > 30)
+
     def my_turn(self):
+        # never talk into an empty chat: during a transfer (agent left, next one not joined yet) wait for the new agent
+        if self.agent_gone_t is not None and not self.agents_present:
+            return False
         return self.last_agent_msg_t is not None and self.last_agent_msg_t > self.turn_mark
 
     def respect_reply_delay(self):
@@ -206,12 +285,19 @@ class Runner:
             if self.paused:
                 self.wait_if_paused()
                 continue
+            check_stop()
             self.page.wait_for_timeout(int(min(left, 1.0) * 1000) + 20)
 
     def wait_if_paused(self):
         t = time.time()
+        nag = t + 60
         while self.paused:
             self.page.wait_for_timeout(250)
+            check_stop()
+            if time.time() > nag:      # a forgotten pause holds the agent's slot - remind every minute
+                print(f"   *** still PAUSED ({int((time.time() - t) // 60)} min) - press Enter in this window "
+                      f"to resume ***")
+                nag = time.time() + 60
         return time.time() - t
 
     # ---- network listener: READ-ONLY. Parses /v1/ws long-poll responses to track the conversation.
@@ -237,7 +323,10 @@ class Runner:
                     ensure_ascii=False) + "\n")
                 self.raw_ws_f.flush()
 
-            msgs = (data.get("original") or {}).get("messages") or []
+            orig = data.get("original") or {}
+            if self.agent_joined and (orig.get("chatEnded") is True or data.get("chatEnded") is True):
+                self.remote_ended = True
+            msgs = orig.get("messages") or []
             for m in msgs:
                 idx = m.get("index")
                 key = (idx, m.get("type"))
@@ -248,23 +337,44 @@ class Runner:
                 rec = {"t_ms": int((time.time() - self.t0) * 1000), "index": idx,
                        "type": m.get("type"), "from_type": frm.get("type"),
                        "from_name": frm.get("nickname"), "text": m.get("text")}
+                rec["clock"] = time.strftime("%H:%M:%S")
                 self.transcript_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 self.transcript_f.flush()
+                self.transcript_rows.append(rec)
                 if frm.get("type") == "Agent":
+                    if not self.agent_joined:
+                        self.t_joined = time.time()
                     self.agent_joined = True
                     self.last_agent_from = frm.get("nickname") or frm.get("participantId")
                     if self.agent_id is None:
                         self.agent_id = parse_agent_id(frm.get("nickname"))
                     register_sensitive(frm.get("nickname"), self.agent_id)
+                    who = parse_agent_id(frm.get("nickname")) or str(frm.get("nickname") or frm.get("participantId") or "")
+                    if who and (not self.agents_seen or self.agents_seen[-1] != who):
+                        self.agents_seen.append(who)
+                    mtype = str(m.get("type") or "")
+                    if re.search(r"left|disconnect|ended|removed", mtype, re.I):
+                        self.agents_present.discard(who)
+                        if not self.agents_present:
+                            self.agent_gone_t = time.time()
+                    else:
+                        self.agents_present.add(who)
+                        self.agent_gone_t = None
                 if m.get("type") == "Message" and frm.get("type") == "Agent":
                     self.agent_msg_count += 1
                     self.last_agent_msg_t = time.time()
+                    self.t_greeting = self.t_greeting or self.last_agent_msg_t
+                    if self._bot_sent_t:
+                        self.reply_times.append(self.last_agent_msg_t - self._bot_sent_t)
+                        self._bot_sent_t = None
                 if m.get("type") == "Message" and frm.get("type") == "Client":
                     self.msg_client += 1
                     norm = " ".join(str(m.get("text") or "").split())
+                    rec["by"] = "bot"
                     if norm in self.bot_texts:
                         self.bot_texts.remove(norm)          # the bot's own message coming back
                     elif self.agent_joined:
+                        rec["by"] = "you (typed by hand)"
                         self.turn_mark = max(self.turn_mark, time.time())   # someone typed by hand
                         print("         (manual message seen - the bot will wait for the agent's next reply)")
         except Exception:  # noqa: BLE001
@@ -285,6 +395,7 @@ class Runner:
             print(f"  (screenshot failed: {str(e)[:120]})")
 
     def step(self, name, fn, *a, **kw):
+        check_stop()
         self.wait_if_paused()
         t_start = time.time()
         print(f"[{int(t_start - self.t0):4d}s] {name} ...")
@@ -315,6 +426,7 @@ class Runner:
         next_beat = t_start + heartbeat_every
         while time.time() < deadline:
             self.page.wait_for_timeout(250)
+            check_stop()
             if self.paused:
                 dt = self.wait_if_paused()   # paused time doesn't count against the timeout
                 deadline += dt
@@ -348,6 +460,7 @@ class Runner:
                         "skipped": self.skip_reason, "survey_shown": self.survey_shown,
                         "survey_submitted": self.survey_submitted,
                         "messages_client": self.msg_client, "messages_agent": self.agent_msg_count,
+                        "timings": self.timings(),
                         "steps": self.report}, indent=2), encoding="utf-8")
 
 
@@ -423,6 +536,7 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
             return btn.count() > 0 and btn.first.is_visible()
         runner.wait_until(f'menu option "{label}" visible', menu_ready, timeout=45)
         btn.first.click()
+        runner.t_menu_done = time.time()
     for opt in tc["menu_path"]:
         runner.step(f'choose menu option "{opt}"', pick_menu, opt)
 
@@ -461,6 +575,7 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
                 b = f.locator('[data-testid="fusion-header-close-btn"]')
                 runner.wait_until("close (X) button visible", lambda: b.count() > 0 and b.first.is_visible())
                 b.first.click()
+                runner.t_chat_end = time.time()
             runner.step("skip: click close (X)", skip_close)
 
             def skip_end():
@@ -468,6 +583,7 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
                 b = f.get_by_text(tc["end_chat_button_text"], exact=True)
                 runner.wait_until('"End chat" option visible', lambda: b.count() > 0 and b.first.is_visible())
                 b.first.click()
+                runner.chat_ended = True
             runner.step("skip: choose End chat", skip_end)
             page.wait_for_timeout(1500)
             return
@@ -476,10 +592,15 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
         """Wait until the agent has written something newer than the last client message (the bot's or
         yours), wait reply_delay_seconds, re-check (a pause or your own typing may have taken the turn), send."""
         while True:
-            runner.wait_until("the agent's greeting" if first else "the agent's reply", runner.my_turn,
+            runner.wait_until("the agent's greeting" if first else "the agent's reply",
+                              lambda: runner.my_turn() or runner.agent_has_ended(),
                               timeout=runner.agent_wait_timeout if first else runner.turn_wait_timeout)
+            if runner.agent_has_ended():
+                raise AgentEnded()
             runner.respect_reply_delay()
             runner.wait_if_paused()
+            if runner.agent_has_ended():
+                raise AgentEnded()
             if runner.my_turn():
                 break
         f = runner.chat_frame()
@@ -490,29 +611,66 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
         runner.bot_texts.append(" ".join(text.split()))
         runner.turn_mark = max(runner.turn_mark, time.time())
         box.first.press("Enter")
+        runner._bot_sent_t = time.time()
 
     n = len(tc["scripted_messages"])
-    for i, msg in enumerate(tc["scripted_messages"], start=1):
-        runner.step(f"message {i}/{n} (after the agent's reply): {msg[:40]!r}", reply, msg, i == 1)
+    try:
+        for i, msg in enumerate(tc["scripted_messages"], start=1):
+            runner.step(f"message {i}/{n} (after the agent's reply): {msg[:40]!r}", reply, msg, i == 1)
+    except AgentEnded:
+        runner.agent_ended_chat = True
+        runner.report.append({"step": f"the agent ended the chat after {runner.msg_client} bot message(s)",
+                              "status": "ok", "seconds": 0})
+        print(f"         the agent ended the chat before the script finished ({runner.msg_client}/{n} messages sent)")
+        runner.snapshot("agent ended the chat")
+
+    if runner.transferred_to:
+        print(f"         note: this chat was transferred from {runner.agent_id} to {runner.transferred_to}")
 
     # brief grace period for the agent's closing reply, not required to proceed
-    page.wait_for_timeout(4000)
+    page.wait_for_timeout(1500 if runner.agent_ended_chat else 4000)
+
+    if runner.agent_ended_chat:
+        # the chat is already over on the agent's side: close the window if the X/End chat are still offered
+        # (short waits, no failure if they aren't), then look for the survey as usual
+        try:
+            f = runner.chat_frame()
+            f.locator('[data-testid="fusion-header-close-btn"]').first.click(timeout=5000)
+            runner.t_chat_end = time.time()
+            f.get_by_text(tc["end_chat_button_text"], exact=True).first.click(timeout=5000)
+        except Exception:  # noqa: BLE001
+            pass
+        runner.t_chat_end = runner.t_chat_end or time.time()
+        runner.chat_ended = True
 
     def close_chat():
+        if runner.agent_ended_chat:
+            return
         f = runner.chat_frame()
         close_btn = f.locator('[data-testid="fusion-header-close-btn"]')
         runner.wait_until("close (X) button visible", lambda: close_btn.count() > 0 and close_btn.first.is_visible())
         close_btn.first.click()
-    runner.step("click close (X)", close_chat)
+        runner.t_chat_end = time.time()
+    if not runner.agent_ended_chat:
+        runner.step("click close (X)", close_chat)
 
     def end_chat():
+        if runner.agent_ended_chat:
+            return
         f = runner.chat_frame()
         end_btn = f.get_by_text(tc["end_chat_button_text"], exact=True)
         runner.wait_until('"End chat" option visible', lambda: end_btn.count() > 0 and end_btn.first.is_visible())
         end_btn.first.click()
-    runner.step("choose End chat", end_chat)
+        runner.chat_ended = True
+    if not runner.agent_ended_chat:
+        runner.step("choose End chat", end_chat)
 
     sv = tc["survey"]
+    if runner.transferred_to:
+        # by design: a transferred chat gets no survey (it would rate a different agent than the target)
+        runner.report.append({"step": "no survey: the chat was transferred", "status": "ok", "seconds": 0})
+        print("         transferred chat - not filling in a survey (by design)")
+        return
 
     def wait_survey():
         f = runner.chat_frame()
@@ -580,6 +738,88 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
 # min_messages_per_chat (6), reply_delay_seconds (30), parallel_runs (1, max 10), worker_stagger_seconds (30),
 # test_case_mode (random | sequential | fixed), test_case_file (for fixed),
 # reuse_browser (skips = keep the browser after a non-target agent | always | never). Other rows are ignored.
+UNLIMITED = 1_000_000      # "agent, ID, unlimited" in the Sheet
+
+
+def show_quota(n):
+    return "unlimited" if n >= UNLIMITED // 2 else n
+
+
+def _span(sec):
+    return f"{int(sec) // 60} min" if sec >= 60 else f"{int(sec)} s"
+
+
+def end_reason(runner, entry, tc):
+    """One plain sentence for the Log: what ended this chat."""
+    o = entry.get("outcome")
+    n = len(tc.get("scripted_messages") or [])
+    sent = runner.msg_client
+    if o == "skipped":
+        return f"skipped - {runner.skip_reason}"
+    if o == "interrupted":
+        return f"stopped mid-chat ({STOP.get('why') or 'Ctrl+C'}) after {sent}/{n} bot messages - chat closed by the bot"
+    if runner.transferred_to and o != "failed":
+        return (f"transferred from {runner.agent_id} to {runner.transferred_to} after {sent}/{n} bot messages - "
+                f"no survey (by design)")
+    if o == "agent_ended":
+        surv = "survey submitted" if runner.survey_submitted else ("survey shown" if runner.survey_shown else "no survey appeared")
+        return f"the agent ended the chat after {sent}/{n} bot messages - {surv}"
+    if o == "chat_no_survey":
+        return f"script completed ({sent}/{n} bot messages) - the survey did not appear"
+    if o == "survey_submitted":
+        return "completed - survey submitted" + ("" if entry.get("chat_counted") else " (below the message threshold)")
+    if o == "incomplete":
+        return "survey appeared but was not submitted"
+    if o == "failed":
+        bad = next((st for st in reversed(runner.report) if st.get("status") == "failed"), None)
+        step, err = (bad or {}).get("step", ""), (bad or {}).get("error", "")
+        m = re.match(r"message (\d+)/", step)
+        tail = " - the bot closed the chat" if runner.chat_ended else ""
+        if runner.transferred_to:
+            tail += f" (after a transfer to {runner.transferred_to})"
+        if m and "greeting" in err:
+            return f"the agent joined but never sent a greeting ({_span(runner.agent_wait_timeout)}){tail}"
+        if m and "agent's reply" in err:
+            return (f"no reply from the agent for {_span(runner.turn_wait_timeout)} after bot message "
+                    f"{int(m.group(1)) - 1}/{n}{tail}")
+        if m and "reply box" in err:
+            return f"the reply box disappeared before bot message {m.group(1)}/{n} (chat closed on the site?){tail}"
+        if step.startswith("wait for live agent"):
+            return f"no agent joined within {_span(runner.agent_wait_timeout)}"
+        if step in ("click close (X)", "choose End chat"):
+            return f"could not close the chat at the end ({step})"
+        if any(k in step for k in ("survey", "stars", "resolved", "comment", "start screen")):
+            return f"problem in the survey step '{step}'"
+        if not runner.agent_joined:
+            return f"site problem before reaching an agent, at '{step}'"
+        return f"bot error at '{step}': {err[:90]}"
+    return o or ""
+
+
+def is_unplanned(e):
+    """A real conversation that didn't go as planned: transferred, the agent ended it, no survey, the bot failed or
+    was stopped mid-chat, or too few messages to count. Not: skipped agents (not a target / quota reached), contacts
+    with no messages at all, and normal completed chats with a survey."""
+    if e.get("outcome") == "skipped" or not (e.get("messages_total") or 0):
+        return False
+    if e.get("outcome") == "survey_submitted" and e.get("chat_counted") and not e.get("transferred_to"):
+        return False
+    return True
+
+
+def should_save(cfg, entry):
+    """save_chats in the Sheet: none | all | unplanned | chat | outcome names | agent IDs (mix with ; or ,).
+    e.g. "chat_no_survey; AT3469" saves every chat without a survey plus every chat with agent AT3469."""
+    toks = {t.strip().lower() for t in re.split(r"[;,\s]+", str(cfg.get("save_chats") or "")) if t.strip()}
+    if not toks or toks == {"none"} or "no" in toks:
+        return False
+    return ("all" in toks or str(entry.get("outcome", "")).lower() in toks
+            or ("unplanned" in toks and is_unplanned(entry))
+            or ("transferred" in toks and entry.get("transferred_to"))
+            or ("chat" in toks and entry.get("chat_counted"))
+            or str(entry.get("agent_id") or "").lower() in toks)
+
+
 def parse_clock(text):
     m = re.fullmatch(r"\s*(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?\s*", str(text))
     if not m:
@@ -608,7 +848,8 @@ def load_config(src):
            "cooldown_seconds": 120, "max_consecutive_skips": 5, "backoff_minutes": 30,
            "min_messages_per_chat": 6, "parallel_runs": 1, "worker_stagger_seconds": 30,
            "reply_delay_seconds": 30, "test_case_mode": "", "test_case_file": "",
-           "reuse_browser": "skips", "agents": {}}
+           "reuse_browser": "skips", "save_chats": "unplanned; survey_submitted", "save_screenshots": False,
+           "no_new_chats_last_minutes": 10, "agents": {}}
     for row in csv.reader(io.StringIO(fetch_config_text(src))):
         row = [c.strip() for c in row]
         if len(row) < 3 or not row[0]:
@@ -628,13 +869,21 @@ def load_config(src):
                 cfg[k] = b
             elif k == "reuse_browser":
                 cfg[k] = b.strip().lower() or "skips"
+            elif k == "save_chats":
+                cfg[k] = b.strip() or "none"
+            elif k == "save_screenshots":
+                cfg[k] = b.strip().lower() in ("yes", "y", "true", "1", "on")
             elif k in ("cooldown_seconds", "max_consecutive_skips", "backoff_minutes", "min_messages_per_chat",
-                       "parallel_runs", "worker_stagger_seconds", "reply_delay_seconds"):
+                       "parallel_runs", "worker_stagger_seconds", "reply_delay_seconds",
+                       "no_new_chats_last_minutes"):
                 try:
                     cfg[k] = int(b)
                 except ValueError:
                     print(f"[config] ignoring bad number for {k}: {b!r}")
         elif kind == "agent":
+            if b.strip().lower() in ("unlimited", "no limit", "nolimit", "inf", "infinite", "*", "-1", "\u221e"):
+                cfg["agents"][a.upper()] = UNLIMITED
+                continue
             try:
                 cfg["agents"][a.upper()] = int(b)
             except ValueError:
@@ -643,6 +892,13 @@ def load_config(src):
     parse_clock(cfg["end"])
     register_sensitive(*cfg["agents"])
     return cfg
+
+
+def window_minutes_left(cfg):
+    """Minutes until end_time (meaningful while the window is open)."""
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo(cfg["tz"]))
+    return (parse_clock(cfg["end"]) - (now.hour * 60 + now.minute)) % 1440
 
 
 def window_status(cfg):
@@ -656,7 +912,7 @@ def window_status(cfg):
     return is_open, f"{now:%a %H:%M} {cfg['tz']} (window {cfg['start']}-{cfg['end']})"
 
 
-MAX_PARALLEL = 200
+MAX_PARALLEL = 10
 
 
 @contextlib.contextmanager
@@ -704,9 +960,52 @@ def save_state(path, state):
     Path(path).write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def disable_quickedit():
+    """Windows: clicking inside a console window starts 'QuickEdit' text selection, which FREEZES the program
+    until you press Enter/Esc (and that Enter would also toggle the bot's pause). Turn it off for this window."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.windll.kernel32
+        h = k32.GetStdHandle(-10)
+        mode = wintypes.DWORD()
+        if k32.GetConsoleMode(h, ctypes.byref(mode)):
+            k32.SetConsoleMode(h, (mode.value & ~0x0040) | 0x0080)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+_WIN_HANDLERS = []
+
+
+def on_window_close(callback):
+    """Windows: run `callback` (quickly - Windows allows about 5 s) when this console window is closed, the user
+    logs off or the PC shuts down. Used to release the agent's slot and log the chat as interrupted."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        HANDLER = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+
+        def _h(event):
+            if event in (2, 5, 6):        # CTRL_CLOSE_EVENT, CTRL_LOGOFF_EVENT, CTRL_SHUTDOWN_EVENT
+                try:
+                    callback()
+                except Exception:  # noqa: BLE001
+                    pass
+            return False
+        _WIN_HANDLERS.append(HANDLER(_h))
+        ctypes.windll.kernel32.SetConsoleCtrlHandler(_WIN_HANDLERS[-1], True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def idle(seconds):
     end = time.time() + seconds
-    while time.time() < end:
+    while time.time() < end and not (STOP["now"] or STOP["after_chat"]):
         time.sleep(1)
 
 
@@ -718,9 +1017,19 @@ def start_pause_listener():
     def loop():
         while True:
             try:
-                input()
+                line = input().strip().lower()
             except EOFError:
                 return
+            if line in ("stop", "s", "q", "quit"):
+                STOP["now"] = True
+                STOP["why"] = STOP["why"] or "typed stop"
+                Runner.PAUSED = False
+                print("   *** STOP: ending the current chat cleanly (no survey), saving the result, then exiting ***")
+                continue
+            if line in ("finish", "f"):
+                STOP["after_chat"] = True
+                print("   *** FINISH: the current chat will be completed normally (incl. survey), then the bot exits ***")
+                continue
             if not Runner.PAUSED:
                 Runner.PAUSED = True
                 print("\n   *** PAUSED - the bot will not type or click. Chat manually in the browser. "
@@ -731,7 +1040,8 @@ def start_pause_listener():
     if not sys.stdin or not sys.stdin.isatty():
         return
     threading.Thread(target=loop, daemon=True).start()
-    print("[pause] Press Enter in this window at any time to pause/resume the bot.\n")
+    print("[keys] Enter = pause/resume | type finish + Enter = finish this chat, then exit | "
+          "type stop + Enter (or Ctrl+C) = end this chat now and exit\n")
 
 
 def run_once(page, args, tc, gate, reply_delay=30, reuse=False):
@@ -746,14 +1056,84 @@ def run_once(page, args, tc, gate, reply_delay=30, reuse=False):
     runner.reply_delay = reply_delay
     runner.failed = False
     runner.run_dir = run_dir
+    # unique per chat: lets the Sheet recognise a retried call (slow network) instead of acting on it twice
+    runner.chat_id = f"{run_dir.name}-{os.getpid()}-{random.randint(1000, 9999)}"
     try:
         run_test_case(runner, tc, tc.get("start_url") or args.url, reuse=reuse)
+    except StopNow:
+        runner.failed = runner.interrupted = True
+        wrap_up(runner, tc, STOP["why"] or "stopped by you")
+    except KeyboardInterrupt:              # forced (second Ctrl+C): don't touch the browser again
+        runner.failed = runner.interrupted = True
     except Exception:  # noqa: BLE001
         runner.failed = True
         print("\n*** TEST CASE FAILED - see error.txt and the _FAILED screenshot ***")
+        wrap_up(runner, tc, "the bot failed mid-chat")
     finally:
         runner.finish()
     return runner
+
+
+def wrap_up(runner, tc, why):
+    """Best effort after a failure or Ctrl+C: close the chat properly (X > End chat) so the agent isn't left
+    holding an open chat. No survey. Never raises."""
+    if runner.chat_ended or not runner.agent_joined:
+        return
+    try:
+        f = runner.page.frame(name=runner.chat_frame_name)
+        if f is None:
+            return
+        f.locator('[data-testid="fusion-header-close-btn"]').first.click(timeout=6000)
+        runner.t_chat_end = runner.t_chat_end or time.time()
+        f.get_by_text(tc["end_chat_button_text"], exact=True).first.click(timeout=6000)
+        runner.chat_ended = True
+        print(f"         ended the chat on the agent's side ({why})")
+    except Exception as e:  # noqa: BLE001
+        print(f"         could not end the chat cleanly ({str(e)[:100]})")
+
+
+def readable_transcript(runner, tc, entry=None):
+    """transcript.txt: the whole interaction as plain text, with a summary header, for analysis."""
+    def mmss(v):
+        return "-" if v is None else f"{int(v) // 60}m {int(v) % 60:02d}s"
+    t = runner.timings()
+    e = entry or {}
+    lines = [
+        f"QA bot chat  {e['time'] + ' (Sheet time zone)' if e.get('time') else time.strftime('%Y-%m-%d %H:%M:%S (PC time)')}",
+        f"Test case:   {tc.get('name')} ({tc.get('_file', '')})",
+        f"Agent:       {runner.last_agent_from or '-'}   ID: {runner.agent_id or '-'}"
+        + (f"   TRANSFERRED: {' -> '.join(runner.agents_seen)}" if runner.transferred_to else "")
+        + ("   AGENT ENDED THE CHAT before the script finished" if runner.agent_ended_chat else ""),
+        f"Outcome:     {e.get('outcome', 'failed' if runner.failed else 'finished')}"
+        + (f"  ({e['reason']})" if e.get("reason") else ""),
+        f"Ended by:    {e.get('end_reason', '-')}",
+        f"Messages:    {runner.msg_client + runner.agent_msg_count} (bot/customer {runner.msg_client}, "
+        f"agent {runner.agent_msg_count})" + (f"   counted as a chat: {'yes' if e.get('chat_counted') else 'no'}"
+                                              if entry else ""),
+        f"Survey:      {'submitted' if runner.survey_submitted else ('shown, not submitted' if runner.survey_shown else 'not shown')}",
+        f"Times:       whole run {mmss(t['duration_total_s'])} | waiting for an agent {mmss(t['queue_wait_s'])} | "
+        f"conversation {mmss(t['chat_duration_s'])} | agent's first message after joining "
+        f"{mmss(t['first_reply_s'])} | agent's average reply {mmss(t['avg_agent_reply_s'])}",
+        "", "Conversation (PC clock):", "",
+    ]
+    for r in runner.transcript_rows:
+        ft = r.get("from_type")
+        who = {"Agent": f"AGENT ({r.get('from_name') or '?'})",
+               "Client": "BOT" if r.get("by", "bot") == "bot" else "YOU (typed by hand)"}.get(ft, ft or "SYSTEM")
+        if r.get("type") == "Message":
+            lines.append(f"[{r.get('clock', '')}] {who}: {r.get('text') or ''}")
+        else:
+            lines.append(f"[{r.get('clock', '')}] -- {who}: {r.get('type')}")
+    steps = getattr(runner, "report", [])
+    if steps:
+        lines += ["", "Bot steps:"]
+        lines += [f"  {s_['status']:6} {s_['seconds']:6.1f}s  {s_['step']}" + (f"  ERROR: {s_['error']}" if s_.get("error") else "")
+                  for s_ in steps]
+    return "\n".join(lines) + "\n"
+
+
+def fmt_dur(v):
+    return "" if not v else f"{int(v) // 60}m {int(v) % 60:02d}s"
 
 
 def session_date(dt, cfg):
@@ -782,11 +1162,21 @@ def write_report(log_path, out_root, date_key, cfg):
     for e in entries:
         a = agents.setdefault(e.get("agent_id") or "(unknown)",
                               {"name": e.get("agent_name") or "", "contacted": 0, "chats": 0,
-                               "surveys": 0, "chats_no_survey": 0, "not_a_chat": 0, "messages": 0})
+                               "surveys": 0, "chats_no_survey": 0, "not_a_chat": 0, "messages": 0,
+                               "chat_secs": 0, "timed": 0, "reply_secs": 0, "replied": 0,
+                               "transfers": 0, "unplanned": 0})
         a["contacted"] += 1
         a["messages"] += e.get("messages_total", 0)
+        a["transfers"] += 1 if e.get("transferred_to") else 0
+        a["unplanned"] += 1 if e.get("unplanned") else 0
         if e.get("chat_counted"):
             a["chats"] += 1
+            if e.get("chat_duration_s"):
+                a["chat_secs"] += e["chat_duration_s"]
+                a["timed"] += 1
+            if e.get("avg_agent_reply_s"):
+                a["reply_secs"] += e["avg_agent_reply_s"]
+                a["replied"] += 1
             if e.get("survey_submitted"):
                 a["surveys"] += 1
             else:
@@ -796,16 +1186,21 @@ def write_report(log_path, out_root, date_key, cfg):
     rep_dir = Path(out_root) / "reports"
     rep_dir.mkdir(parents=True, exist_ok=True)
     base = rep_dir / f"report_{date_key}"
+    avg_min = lambda a: round(a["chat_secs"] / a["timed"] / 60, 1) if a["timed"] else ""  # noqa: E731
+    avg_rep = lambda a: round(a["reply_secs"] / a["replied"]) if a["replied"] else ""  # noqa: E731
     cols = ["agent_id", "agent_name", "times_contacted", "chats", "surveys_given", "chats_without_survey",
-            "contacts_below_chat_threshold", "messages_total"]
+            "contacts_below_chat_threshold", "messages_total", "avg_chat_minutes", "avg_agent_reply_seconds",
+            "transferred_away", "unplanned_chats"]
     with open(f"{base}_agents.csv", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(cols)
         for aid, a in sorted(agents.items()):
             w.writerow([aid, a["name"], a["contacted"], a["chats"], a["surveys"], a["chats_no_survey"],
-                        a["not_a_chat"], a["messages"]])
+                        a["not_a_chat"], a["messages"], avg_min(a), avg_rep(a), a["transfers"], a["unplanned"]])
     dcols = ["time", "agent_id", "agent_name", "outcome", "chat_counted", "messages_total",
-             "messages_bot", "messages_agent", "worker", "test_case", "survey_shown", "survey_submitted", "note", "run_dir"]
+             "messages_bot", "messages_agent", "worker", "test_case", "survey_shown", "survey_submitted", "note", "run_dir",
+             "duration_total_s", "queue_wait_s", "chat_duration_s", "first_reply_s", "avg_agent_reply_s", "saved_to",
+             "transferred_to", "unplanned"]
     with open(f"{base}_chats.csv", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(dcols)
@@ -813,17 +1208,21 @@ def write_report(log_path, out_root, date_key, cfg):
             w.writerow([e.get("time"), e.get("agent_id"), e.get("agent_name"), e.get("outcome"),
                         e.get("chat_counted"), e.get("messages_total"), e.get("messages_client"),
                         e.get("messages_agent"), e.get("worker"), e.get("test_case"), e.get("survey_shown"), e.get("survey_submitted"),
-                        e.get("reason") or "", e.get("run_dir")])
+                        e.get("reason") or "", e.get("run_dir"), e.get("duration_total_s"), e.get("queue_wait_s"),
+                        e.get("chat_duration_s"), e.get("first_reply_s"), e.get("avg_agent_reply_s"),
+                        e.get("saved_to") or "", e.get("transferred_to") or "", bool(e.get("unplanned"))])
     tot = lambda k: sum(a[k] for a in agents.values())  # noqa: E731
     win = f"{cfg['start']} - {cfg['end']} ({cfg['tz']})"
     thr = cfg["min_messages_per_chat"]
     rows = "".join(
         f"<tr><td>{H.escape(aid)}</td><td>{H.escape(a['name'])}</td><td>{a['contacted']}</td><td>{a['chats']}</td>"
-        f"<td>{a['surveys']}</td><td>{a['chats_no_survey']}</td><td>{a['not_a_chat']}</td></tr>"
+        f"<td>{a['surveys']}</td><td>{a['chats_no_survey']}</td><td>{a['not_a_chat']}</td>"
+        f"<td>{avg_min(a)}</td><td>{avg_rep(a)}</td><td>{a['transfers']}</td><td>{a['unplanned']}</td></tr>"
         for aid, a in sorted(agents.items()))
     drows = "".join(
         f"<tr><td>{H.escape(str(e.get('time', ''))[11:19])}</td><td>{H.escape(str(e.get('agent_id') or ''))}</td>"
-        f"<td>{H.escape(str(e.get('outcome')))}</td><td>{e.get('messages_total', 0)}</td>"
+        f"<td>{H.escape(str(e.get('outcome')))}{' &rarr; ' + H.escape(str(e['transferred_to'])) if e.get('transferred_to') else ''}</td><td>{e.get('messages_total', 0)}</td>"
+        f"<td>{fmt_dur(e.get('chat_duration_s'))}</td>"
         f"<td>{'yes' if e.get('chat_counted') else 'no'}</td>"
         f"<td>{'submitted' if e.get('survey_submitted') else ('shown, not submitted' if e.get('survey_shown') else 'not shown')}</td>"
         f"<td>{H.escape(str(e.get('reason') or ''))}</td></tr>" for e in entries)
@@ -835,9 +1234,9 @@ table{{border-collapse:collapse;width:100%;margin:8px 0 24px}}td,th{{border-bott
 .w{{overflow-x:auto}}</style></head><body>
 <h1>QA bot report - {date_key}</h1><p>Run window: {H.escape(win)}. A contact counts as a <b>chat</b> when at least {thr} messages were exchanged in total (bot + agent).</p>
 <div class="k"><div><b>{len(agents)}</b>agents contacted</div><div><b>{len(entries)}</b>contacts</div>
-<div><b>{tot('chats')}</b>chats</div><div><b>{tot('surveys')}</b>surveys given</div><div><b>{tot('chats_no_survey')}</b>chats with no survey</div></div>
-<h2>By agent</h2><div class="w"><table><tr><th>Agent ID</th><th>Name</th><th>Contacted</th><th>Chats</th><th>Surveys given</th><th>Chats, no survey</th><th>Below chat threshold</th></tr>{rows}</table></div>
-<h2>Every contact</h2><div class="w"><table><tr><th>Time</th><th>Agent</th><th>Outcome</th><th>Messages</th><th>Counted as chat</th><th>Survey</th><th>Note</th></tr>{drows}</table></div>
+<div><b>{tot('chats')}</b>chats</div><div><b>{tot('surveys')}</b>surveys given</div><div><b>{tot('chats_no_survey')}</b>chats with no survey</div><div><b>{tot('transfers')}</b>transfers</div><div><b>{tot('unplanned')}</b>unplanned chats</div></div>
+<h2>By agent</h2><div class="w"><table><tr><th>Agent ID</th><th>Name</th><th>Contacted</th><th>Chats</th><th>Surveys given</th><th>Chats, no survey</th><th>Below chat threshold</th><th>Avg chat (min)</th><th>Avg agent reply (s)</th><th>Transferred away</th><th>Unplanned</th></tr>{rows}</table></div>
+<h2>Every contact</h2><div class="w"><table><tr><th>Time</th><th>Agent</th><th>Outcome</th><th>Messages</th><th>Chat time</th><th>Counted as chat</th><th>Survey</th><th>Note</th></tr>{drows}</table></div>
 </body></html>"""
     Path(f"{base}.html").write_text(doc, encoding="utf-8")
     return f"{base}.html"
@@ -974,22 +1373,26 @@ class LocalBackend:
         st = load_state(self.state_path)
         return {a: q - st["done"].get(a, 0) - len(st["reserved"].get(a, {})) for a, q in agents.items()}
 
-    def reserve(self, agent, quota, wkey):
+    def reserve(self, agent, quota, wkey, chat_id=None):
+        key = chat_id or wkey
         with file_lock(self.lock):
             st = load_state(self.state_path)
-            used = st["done"].get(agent, 0) + len(st["reserved"].get(agent, {}))
+            mine = st["reserved"].get(agent, {})
+            if key in mine:
+                return True, st["done"].get(agent, 0) + len(mine)
+            used = st["done"].get(agent, 0) + len(mine)
             if used >= quota:
                 return False, used
-            st["reserved"].setdefault(agent, {})[wkey] = time.time()
+            st["reserved"].setdefault(agent, {})[key] = time.time()
             save_state(self.state_path, st)
             return True, used + 1
 
-    def commit(self, agent, wkey, submitted, entry):
+    def commit(self, agent, wkey, submitted, entry, fast=False):
         if not agent:
             return None
         with file_lock(self.lock):
             st = load_state(self.state_path)
-            st["reserved"].get(agent, {}).pop(wkey, None)
+            st["reserved"].get(agent, {}).pop(entry.get("chat_id") or wkey, None)
             if submitted:
                 st["done"][agent] = st["done"].get(agent, 0) + 1
             save_state(self.state_path, st)
@@ -1005,7 +1408,7 @@ class RemoteBackend:
     def __init__(self, url, token, pending_path):
         self.url, self.token, self.pending = url, token, str(pending_path)
 
-    def _call(self, action, tries=4, **payload):
+    def _call(self, action, tries=4, timeout=100, **payload):
         import urllib.request
         body = json.dumps({"token": self.token, "action": action, **payload}).encode("utf-8")
         last = None
@@ -1013,7 +1416,7 @@ class RemoteBackend:
             try:
                 req = urllib.request.Request(self.url, data=body, method="POST",
                                              headers={"Content-Type": "text/plain;charset=utf-8"})
-                with urllib.request.urlopen(req, timeout=45) as r:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
                     text = r.read().decode("utf-8")
                 try:
                     data = json.loads(text)
@@ -1025,24 +1428,26 @@ class RemoteBackend:
                 return data
             except Exception as e:  # noqa: BLE001
                 last = e
-                if "bad token" in str(e):
+                if "bad token" in str(e) or i == tries - 1:
                     break
-                time.sleep(2 * (i + 1))
+                time.sleep(3 * (i + 1) + random.uniform(0, 5))   # spread retries out so workers don't pile up
         raise RuntimeError(f"counter service: {str(last)[:200]}")
 
     def room(self, agents):
         r = self._call("room", agents=agents)["room"]
         return {str(k).upper(): int(v) for k, v in r.items()}
 
-    def reserve(self, agent, quota, wkey):
-        d = self._call("reserve", agent=agent, quota=quota, worker=wkey)
+    def reserve(self, agent, quota, wkey, chat_id=None):
+        d = self._call("reserve", agent=agent, quota=quota, worker=wkey, chat_id=chat_id)
         return bool(d.get("granted")), d.get("used")
 
-    def commit(self, agent, wkey, submitted, entry):
-        payload = {"agent": agent, "worker": wkey, "submitted": bool(submitted), "entry": entry}
+    def commit(self, agent, wkey, submitted, entry, fast=False):
+        payload = {"agent": agent, "worker": wkey, "submitted": bool(submitted), "entry": entry,
+                   "chat_id": entry.get("chat_id")}
         try:
-            d = self._call("commit", **payload)
-            self.flush()
+            d = self._call("commit", tries=1, timeout=4, **payload) if fast else self._call("commit", **payload)
+            if not fast:
+                self.flush()
             return d.get("done")
         except Exception as e:  # noqa: BLE001
             print(f"[counter] could not save this chat to the Sheet ({e}); kept in {self.pending} and "
@@ -1051,6 +1456,10 @@ class RemoteBackend:
                 with open(self.pending, "a", encoding="utf-8") as f:
                     f.write(json.dumps(payload) + "\n")
             return None
+
+    def save_chat(self, date, name, files, images):
+        """Upload one chat's files to the 'QA bot chats' folder in your Google Drive; returns the folder link."""
+        return self._call("save", tries=2, timeout=180, date=date, name=name, files=files, images=images).get("url")
 
     def flush(self):
         p = Path(self.pending)
@@ -1083,6 +1492,39 @@ def make_backend(args, S):
     return LocalBackend(args.state)
 
 
+def save_chat_copy(runner, entry, cfg, backend, args, S, tag=""):
+    """Keep this chat for analysis: a copy in qa_bot_runs/saved_chats/ (PC) and/or a folder in Google Drive
+    (when the Apps Script counter is set up). Returns where it went (Drive link preferred)."""
+    import shutil
+    name = f"{runner.run_dir.name}_{entry.get('agent_id') or 'unknown'}_{entry.get('outcome')}"
+    where = ""
+    if S["local_report"]:
+        try:
+            dest = Path(args.out) / "saved_chats" / str(entry.get("session_date")) / name
+            shutil.copytree(runner.run_dir, dest, dirs_exist_ok=True)
+            where = str(dest)
+        except Exception as e:  # noqa: BLE001
+            print(f"{tag}could not copy the chat to saved_chats ({e})")
+    if isinstance(backend, RemoteBackend):
+        import base64
+        files = {}
+        for fn in ("transcript.txt", "transcript.jsonl", "report.json", "raw_ws.jsonl", "error.txt"):
+            fp = runner.run_dir / fn
+            if fp.exists():
+                files[fn] = fp.read_text(encoding="utf-8", errors="replace")[:5_000_000]
+        images = {}
+        if cfg.get("save_screenshots"):
+            for fp in sorted(runner.run_dir.glob("*.png")):
+                images[fp.name] = base64.b64encode(fp.read_bytes()).decode("ascii")
+        try:
+            where = backend.save_chat(str(entry.get("session_date")), name, files, images) or where
+        except Exception as e:  # noqa: BLE001
+            print(f"{tag}could not save the chat to Google Drive ({str(e)[:120]})")
+    if where:
+        print(f"{tag}chat saved for analysis: {where}")
+    return where
+
+
 # --------------------------------------------------------------------------- scheduler (one worker)
 def scheduler_loop(pw, args, S):
     ctl = {"unreported": False, "cfg": None, "date": None, "br": {"ctx": None, "page": None, "prof": None}}
@@ -1093,6 +1535,13 @@ def scheduler_loop(pw, args, S):
     try:
         return _scheduler_body(pw, args, S, ctl, log_path, backend, picker)
     finally:
+        if isinstance(backend, RemoteBackend) and Path(backend.pending).exists():
+            try:
+                backend.flush()
+                print("[scheduler] sent the results that were waiting to reach the Sheet")
+            except Exception:  # noqa: BLE001
+                print(f"[scheduler] some results could not reach the Sheet; kept in {backend.pending} "
+                      f"(they are sent automatically next time the bot runs)")
         br = ctl["br"]
         if br["ctx"] is not None:
             try:
@@ -1121,8 +1570,39 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
     last_cfg, last_msg = None, None
     skips_in_row, fails_in_row, runs = 0, 0, 0
     started, seen_open, staggered = time.time(), False, False
+    room_cache = {"t": 0, "room": {}, "agents": None}
+    # GitHub kills a job at its time limit with no warning. QA_JOB_MINUTES (set by the workflow) lets the worker
+    # stop starting chats well before that and end a chat in progress cleanly a few minutes before the cut-off.
+    budget_min = float(os.environ.get("QA_JOB_MINUTES") or 0)
+    hard_stop = started + budget_min * 60 if budget_min > 0 else None
+    wrap_s = float(os.environ.get("QA_JOB_WRAPUP_S") or 240)            # end the chat this long before the cut-off
+    newchat_s = float(os.environ.get("QA_JOB_NEWCHAT_CUTOFF_MIN") or 25) * 60   # no new chat with less time left
+    if hard_stop:
+        import threading
+
+        def _job_clock():
+            while hard_stop - time.time() > wrap_s:
+                time.sleep(min(10, max(0.5, hard_stop - time.time() - wrap_s)))
+            if not STOP["now"]:
+                STOP["why"] = "GitHub job time limit"
+                STOP["now"] = True
+                print(f"{tag}GitHub job time almost up - ending the current chat cleanly; the next scheduled run "
+                      f"continues.")
+        threading.Thread(target=_job_clock, daemon=True).start()
     tag = f"[w{args.worker}] " if args.worker else "[scheduler] "
     br = ctl["br"]
+
+    def release_on_close():
+        r = Runner.current
+        if r is not None and r.reserved_agent and not r.committed:
+            r.committed = True
+            e = {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "session_date": ctl.get("date") or time.strftime("%Y-%m-%d"),
+                 "worker": args.worker, "agent_id": r.agent_id or "", "agent_name": r.last_agent_from or "",
+                 "outcome": "interrupted", "reason": "bot window closed mid-chat", "chat_counted": False,
+                 "survey_shown": r.survey_shown, "survey_submitted": False, "chat_id": getattr(r, "chat_id", "")}
+            e.update(r.timings())
+            backend.commit(r.reserved_agent, wkey, False, e, fast=True)
+    on_window_close(release_on_close)
 
     def close_browser():
         if br["ctx"] is not None:
@@ -1146,11 +1626,12 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
         if quota is None:
             return False, f"agent {agent_id} is not a target"
         try:
-            ok, used = backend.reserve(agent_id, quota, wkey)
+            r = Runner.current
+            ok, used = backend.reserve(agent_id, quota, wkey, getattr(r, "chat_id", None))
         except Exception as e:  # noqa: BLE001
             return False, f"counter service unreachable ({str(e)[:80]})"
         if not ok:
-            return False, f"agent {agent_id} already has {used}/{quota} surveys (incl. chats in progress)"
+            return False, f"agent {agent_id} already has {used}/{show_quota(quota)} surveys (incl. chats in progress)"
         return True, None
 
     def closed_should_exit():
@@ -1171,9 +1652,17 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
         if args.worker and stop_file.exists():
             print(f"{tag}stop requested (parallel_runs lowered); exiting after the last chat.")
             return 0
+        if STOP["now"] or STOP["after_chat"]:
+            print(f"{tag}stopped as requested.")
+            return 0
         if Runner.PAUSED:
             time.sleep(1)
             continue
+        if isinstance(backend, RemoteBackend) and Path(backend.pending).exists():
+            try:
+                backend.flush()          # results that couldn't reach the Sheet earlier
+            except Exception:  # noqa: BLE001
+                pass
         try:
             cfg = load_config(args.config)
             last_cfg = cfg
@@ -1194,6 +1683,10 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
                 idle((args.worker - 1) * cfg["worker_stagger_seconds"])
                 continue
         is_open, wtxt = window_status(cfg)
+        closing = is_open and window_minutes_left(cfg) <= cfg["no_new_chats_last_minutes"]
+        if closing:
+            is_open = False
+            wtxt += f" - last {cfg['no_new_chats_last_minutes']} min of the window, no new chats"
         if not cfg["enabled"] or not is_open:
             if ctl["unreported"] and S["local_report"]:      # the day's window just ended -> final local report
                 with file_lock(lock_path):
@@ -1209,7 +1702,11 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
             continue
         seen_open = True
         try:
-            room = {a: n for a, n in backend.room(cfg["agents"]).items() if n > 0}
+            if room_cache["t"] and time.time() - room_cache["t"] < 90 and room_cache["agents"] == cfg["agents"]:
+                room = room_cache["room"]
+            else:
+                room = {a: n for a, n in backend.room(cfg["agents"]).items() if n > 0}
+                room_cache.update(t=time.time(), room=room, agents=dict(cfg["agents"]))
         except Exception as e:  # noqa: BLE001
             say(f"counter service unreachable ({str(e)[:100]}); retrying in 60s")
             idle(60)
@@ -1231,8 +1728,13 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
             skips_in_row = 0
             continue
 
+        if hard_stop and hard_stop - time.time() < newchat_s:
+            print(f"{tag}less than {newchat_s / 60:.0f} min left in this GitHub job - not starting another chat; the next scheduled "
+                  f"run takes over.")
+            return 0
         tc = picker.pick(cfg)
-        print(f"\n{tag}{wtxt}; surveys still open: {dict(sorted(room.items()))}; test case: {tc['name']}")
+        print(f"\n{tag}{wtxt}; surveys still open: { {a: show_quota(n) for a, n in sorted(room.items())} }; "
+              f"test case: {tc['name']}")
         last_msg = None
         # Browser: kept open between chats per reuse_browser (default "skips": after a non-target agent the bot
         # just clicks the chat button again on the same page). A new browser always gets a brand-new profile.
@@ -1247,14 +1749,17 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
         except Exception:  # noqa: BLE001 - the browser itself died
             close_browser()
             raise
-        if runner.failed and reused and not runner.agent_joined:
+        if runner.failed and reused and not runner.agent_joined and not runner.interrupted:
             # nothing reached an agent - the old page was just in a bad state. Not a real failure: fresh browser.
             print(f"{tag}the reused page didn't work; starting a fresh browser for the next chat")
             close_browser()
             continue
         runs += 1
-        outcome = ("failed" if runner.failed else
+        outcome = ("interrupted" if runner.interrupted else
+                   "failed" if runner.failed else
                    "skipped" if runner.skip_reason else
+                   "transferred" if runner.transferred_to else
+                   "agent_ended" if runner.agent_ended_chat else
                    "survey_submitted" if runner.survey_submitted else
                    "chat_no_survey" if not runner.survey_shown else "incomplete")
         total_msgs = runner.msg_client + runner.agent_msg_count
@@ -1266,7 +1771,20 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
                  "messages_client": runner.msg_client, "messages_agent": runner.agent_msg_count,
                  "chat_counted": bool(total_msgs >= cfg["min_messages_per_chat"] and not runner.skip_reason),
                  "survey_shown": runner.survey_shown, "survey_submitted": runner.survey_submitted,
-                 "test_case": tc["name"], "run_dir": str(runner.run_dir)}
+                 "test_case": tc["name"], "run_dir": str(runner.run_dir), "chat_id": runner.chat_id,
+                 "transferred_to": "" if runner.skip_reason else runner.transferred_to}
+        entry.update(runner.timings())
+        entry["unplanned"] = is_unplanned(entry)
+        entry["end_reason"] = end_reason(runner, entry, tc)
+        if runner.interrupted:
+            entry["reason"] = f"stopped mid-chat ({STOP['why'] or 'Ctrl+C'})"
+        try:
+            (runner.run_dir / "transcript.txt").write_text(readable_transcript(runner, tc, entry), encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
+        if should_save(cfg, entry):
+            entry["saved_to"] = save_chat_copy(runner, entry, cfg, backend, args, S, tag)
+        runner.committed = True
         done = backend.commit(runner.reserved_agent, wkey, runner.survey_submitted, entry)
         if S["local_report"]:
             with file_lock(lock_path):
@@ -1274,8 +1792,16 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
                     lf.write(json.dumps(entry) + "\n")
                 write_report(log_path, args.out, ctl["date"], cfg)   # keep today's local report current
             ctl["unreported"] = True
-        print(f"{tag}chat result: {outcome}" + (f" - survey #{done} recorded for {runner.reserved_agent} "
-              f"(quota {cfg['agents'].get(runner.reserved_agent, '?')})" if runner.survey_submitted and done else ""))
+        mins = f" in {entry['chat_duration_s'] // 60}m {entry['chat_duration_s'] % 60:02d}s" if entry.get("chat_duration_s") else ""
+        print(f"{tag}what ended the chat: {entry['end_reason']}")
+        print(f"{tag}chat result: {outcome}{mins}" + (f" - survey #{done} recorded for {runner.reserved_agent} "
+              f"(quota {show_quota(cfg['agents'].get(runner.reserved_agent, 0))})" if runner.survey_submitted and done else ""))
+        if runner.interrupted:
+            if STOP["force"]:
+                print(f"{tag}result saved; force-quitting.")
+                os._exit(130)
+            print(f"{tag}stopped as requested.")
+            return 0
         mode = cfg.get("reuse_browser", "skips")
         if runner.failed or not (mode == "always" or (mode == "skips" and outcome == "skipped")):
             close_browser()
@@ -1298,6 +1824,9 @@ def gate_main(args, S):
             raise RuntimeError("no Config sheet link (QA_SHEET_CSV_URL secret / sheet_csv_url setting)")
         cfg = load_config(args.config)
         is_open, wtxt = window_status(cfg)
+        if is_open and window_minutes_left(cfg) <= cfg["no_new_chats_last_minutes"]:
+            is_open = False
+            wtxt += f" - last {cfg['no_new_chats_last_minutes']} min of the window"
         n = max(0, min(int(cfg["parallel_runs"]), MAX_PARALLEL))
         if not cfg["enabled"]:
             reason = "disabled in the sheet (enabled = no)"
@@ -1349,13 +1878,16 @@ def launcher_main(args):
           "to stop starting new workers; close a worker's window to stop that worker.")
     try:
         while True:
+            if STOP["now"] or STOP["after_chat"]:
+                print("\n[launcher] stopped (workers keep running until you stop them in their own windows).")
+                return
             try:
                 cfg = load_config(args.config)
                 want = max(0, min(int(cfg["parallel_runs"]), MAX_PARALLEL))
                 stagger = max(0, cfg["worker_stagger_seconds"])
             except Exception as e:  # noqa: BLE001
                 print(f"[launcher] can't read the config sheet ({str(e)[:100]}); keeping current workers")
-                time.sleep(30)
+                idle(30)
                 continue
             if want != last_n:
                 print(f"[launcher] parallel_runs = {want}")
@@ -1386,7 +1918,7 @@ def launcher_main(args):
                         time.sleep(stagger)       # stagger starts so they don't all hit the queue at once
                 elif alive:
                     sf.touch()                    # ask it to stop after its current chat
-            time.sleep(30)
+            idle(30)
     except KeyboardInterrupt:
         print("\n[launcher] stopped.")
 
@@ -1432,6 +1964,8 @@ def main():
         args.settings = str(Path(__file__).resolve().parent / args.settings)
     S = load_settings(args.settings)
     MASK = bool(S["mask_agent_ids"])
+    disable_quickedit()
+    install_ctrl_c()
     args.url = args.url or S["start_url"]
     args.config = args.config or S["sheet_csv_url"] or None
     args.state = args.state or S["state_file"]
@@ -1477,6 +2011,7 @@ def main():
         try:
             runner = run_once(page, args, tc, None, args.reply_delay)
             failed = runner.failed
+            (runner.run_dir / "transcript.txt").write_text(readable_transcript(runner, tc), encoding="utf-8")
         except KeyboardInterrupt:
             print("\n[stopped by user]")
         finally:
