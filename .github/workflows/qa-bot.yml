@@ -22,7 +22,7 @@ env:
 jobs:
   gate:
     name: Check the Sheet (window, enabled, quotas, parallel_runs)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       open: ${{ steps.gate.outputs.open }}
@@ -55,4 +55,7 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - run: command -v xvfb-run || sudo apt-get install -y xvfb
       - name: Run chats
+        env:
+          QA_JOB_MINUTES: "340"         # keep in step with timeout-minutes: workers stop starting chats ~25 min
+                                        # before it, and end a chat in progress cleanly ~4 min before it
         run: xvfb-run -a python qa_bot.py --worker ${{ matrix.worker }} --browser chromium
