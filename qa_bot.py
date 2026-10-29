@@ -912,7 +912,7 @@ def window_status(cfg):
     return is_open, f"{now:%a %H:%M} {cfg['tz']} (window {cfg['start']}-{cfg['end']})"
 
 
-MAX_PARALLEL = 10
+MAX_PARALLEL = 25
 
 
 @contextlib.contextmanager
@@ -2032,3 +2032,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
