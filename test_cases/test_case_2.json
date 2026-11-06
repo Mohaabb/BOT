@@ -1,7 +1,6 @@
 {
-  "_how_to_use": "Copy this file, rename it (e.g. test_case_2.json, the name must NOT start with _), fill it in. Files starting with _ are ignored. Every .json file in this folder is a test case the bot can pick. Optional: add \"start_url\": \"https://...\" to start this case on a different page than bot_settings.json's start_url.",
   "name": "Wireless Quote",
-  "description": "Normallyw ill be used",
+  "description": "Normally will be used",
   "initial_message": "chat with a live agent",
   "menu_path": [
     "AT&T Wireless",
