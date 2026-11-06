@@ -1,0 +1,25 @@
+{
+  "_how_to_use": "Copy this file, rename it (e.g. test_case_2.json, the name must NOT start with _), fill it in. Files starting with _ are ignored. Every .json file in this folder is a test case the bot can pick. Optional: add \"start_url\": \"https://...\" to start this case on a different page than bot_settings.json's start_url.",
+  "name": "Senior bundle",
+  "description": "Normallyw ill be used",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Hi, I'm a new customer",
+    "I wanna ask for your senior bundle",
+    "so is it true, that I pay only $99/mo for 2 lines and home internet ? no hidden fees or taxes or something?",
+    "so total is around $115/mo ?",
+    "that's great, and can we keep our numbers ?",
+    "what about the devices, do we have to get new devices from you or we can bring our own ?",
+    "thank you, I'll check with my wife and will come back to you for sure, bye!"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": 5,
+    "resolved": "yes",
+    "comment": ""
+  }
+}
