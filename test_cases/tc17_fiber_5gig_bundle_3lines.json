@@ -1,0 +1,43 @@
+{
+  "name": "3 lines Extra 2.0 + Fiber 5 GIG bundle (wireless-led, no transfer)",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: analytical, compares offers.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Chris Delgado",
+    "Appreciate it. I'm weighing a switch of three lines from Verizon to AT&T, all on Extra 2.0 with phones we already own (unlocked). I'm in 75201, no account. I've also seen that bundling AT&T Fiber 5 GIG gets a $25 discount on the internet, plus the $10 AutoPay/paperless discount, a $100 reward card, 3 months of YouTube TV and free Internet Backup. I only want to talk about the wireless side here, so no need to send me to the internet team, I'll handle fiber online. What would three lines on Extra 2.0 cost me, and how does the bundle discount apply?",
+    "tyt, take your time",
+    "Still here, thanks.",
+    "Okay. So the bundle discount comes off the internet bill, not the wireless one, correct?",
+    "Got it. And the Internet Backup is free as long as I have both services, right?",
+    "One detail I'm unsure about: does the $100 reward card come after the internet is installed, or after a couple of bills?",
+    "Alright, that's clear. The wireless side is pretty competitive, and you've been straightforward and patient, so a good rating is coming your way.",
+    "No, that's everything. Thanks, have a great rest of your day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: second wait message (long calculation)",
+    "before message 5: agent: gives the answer/quote",
+    "before message 6: agent: answers the previous question",
+    "before message 7: agent: answers the follow-up",
+    "before message 8: agent: gives the detail / the calculated bill",
+    "before message 9: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

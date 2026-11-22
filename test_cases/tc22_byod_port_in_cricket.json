@@ -1,0 +1,39 @@
+{
+  "name": "Port-in from Cricket - BYOD iPhone 15, Value 2.0, eSIM",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: non-native English, polite.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Omar Haddad",
+    "Hello, thank you. I want to move my number from Cricket to AT&T, one line, plan Value 2.0. I have my own phone, iPhone 15, already unlocked and fully paid. My zip code is 85004 and I don't have account in AT&T. Please can you explain me the steps to keep my number and if I can use eSIM? I only ask for information now, the order I will do online and I will take the transfer PIN from Cricket by myself.",
+    "ok no worries tyt",
+    "Thank you. When the number moves, the old line from Cricket is cancelled automatically?",
+    "I understand. How long it takes usually until the number works on AT&T?",
+    "Very clear now, thank you. You was very kind and patient with my English, I will give you a good rating, thank you so much.",
+    "No, that is all. Have a nice rest of your day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "New line - Pixel 11 Pro $0 with trade-in - Premium 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: terse, tech-savvy.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Sarah Lindqvist",
+    "Pixel 11 Pro, listed at $0/mo with eligible trade-in. Trading a Pixel 8 Pro, paid off, no damage. One new line coming from Mint Mobile, a new number is fine. Zip 85004, no AT&T account. What's the monthly total on Premium 2.0? Info only, I'll order online.",
+    "np, tyt",
+    "Thanks. Does Premium 2.0 include the 100GB hotspot?",
+    "And what does the first bill look like with taxes and fees included?",
+    "sure",
+    "Fair enough. Slightly higher than I'd like, but your answers were quick and clear, thanks. You'll get a good rating from me.",
+    "That's all. Have a good one, bye."
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 6: agent: waiting message while calculating the bill",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

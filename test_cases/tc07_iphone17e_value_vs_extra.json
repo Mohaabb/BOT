@@ -1,0 +1,39 @@
+{
+  "name": "New line - iPhone 17e no trade-in - Value 2.0 vs Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: casual, lowercase texter.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "maria gonzales",
+    "hey! so im thinking of getting a new line (not moving my old number) and the iphone 17e, no trade in, i saw its $5.99 a month for the phone on the site. my zip is 30303 and ive never had att before so no account. can u tell me how much it would be total a month on value 2.0 and also on extra 2.0 so i can compare? just checking prices rn, ill order on the website later",
+    "all good, tyt",
+    "ok thanks!! so the only real difference is the data right, like 5GB on value and 100GB on extra?",
+    "got it. and is the $5.99 for the phone the same all 36 months or does it change after a while?",
+    "ok perfect, value is enough for me bc im always on wifi. thank u so much, you were super nice and fast, ill def give u a good rating",
+    "nope thats all, have a good one bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

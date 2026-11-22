@@ -1,0 +1,41 @@
+{
+  "name": "Switch 2 lines - 2x Galaxy S26 $0 with trade-in - Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: chatty married guy.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Kevin Brandt, nice to meet you",
+    "So here's the deal, my wife and I are both on Verizon and honestly we're tired of what we pay, so we're looking at moving both lines to you guys. I'm in 77002, no AT&T account yet. We'd each get a Galaxy S26, I saw they're showing $0 a month with a trade-in, and we've both got Galaxy S23s that are paid off, working great, no cracked screens. We're leaning toward Extra 2.0 on both lines. What would the whole thing run us per month? We're just shopping around tonight, we'll probably order on the website.",
+    "Sure thing, take your time, we're not going anywhere haha",
+    "Great, so that's $120 for the two lines before taxes, is that what you're seeing on your end?",
+    "Okay good. And do the phones come out to $0 for both of us or just one?",
+    "Last thing I'm wondering, how do the phone credits actually work, do they all show up on the first bill or get spread out over the 36 months?",
+    "Ahh okay, that makes sense. Honestly that's better than what we pay now. You've been super helpful and a good sport with all my questions, I'm definitely leaving you a top rating.",
+    "Nope, that's everything! Thanks again, have a great rest of your day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

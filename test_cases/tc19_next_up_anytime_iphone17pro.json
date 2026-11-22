@@ -1,0 +1,39 @@
+{
+  "name": "New line - iPhone 17 Pro + Next Up Anytime (+$10/mo)",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: casual gadget fan, light humor.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Tom Gallagher",
+    "hey Tom here, i'm a gadget guy who gets antsy for new phones lol. planning one new line with an iPhone 17 Pro, no trade-in, $14.99/mo on your site, on Extra 2.0. zip 98101, never had att. i keep seeing this Next Up Anytime thing for +$10 a month where i can upgrade early up to 3 times a year, how much would my total monthly be with that added? just window shopping, will order online",
+    "no worries tyt",
+    "nice, so the $10 just gets added on top of everything else, yeah?",
+    "and do i have to pay off the 17 Pro first before i can upgrade, or does it roll over?",
+    "gotcha. that actually helps a lot, you made it way easier than i expected, thanks for being cool about all my nerdy questions. solid rating coming your way",
+    "nah that's it, have a great one, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "Switch 2 lines - up to $800/line to break contract (reward card)",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: skeptical but fair.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Michael Duarte",
+    "Alright, I'll be upfront, I'm skeptical of promos but I want to understand this one. My family has two lines with T-Mobile and I owe about $400 on each phone. Your site says switch to AT&T and get up to $800 per line to break your contract through a reward card. We'd keep using the same phones (unlocked) and put both lines on Premium 2.0. I'm in 33131, no account. How does that reward work in practice and what do I have to do to actually get it? Info only, I'll order online when I decide.",
+    "no worries, tyt",
+    "Thanks. So the card covers what we still owe on the phones, up to $800 a line, correct?",
+    "Okay. How long after switching does the card usually show up, and do I need to send you our final T-Mobile bill?",
+    "Fair enough. I came in skeptical but you explained it straight and didn't oversell it, that earns a good rating from me, thank you.",
+    "No, I'm good. Thanks, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

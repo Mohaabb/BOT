@@ -1,0 +1,43 @@
+{
+  "name": "3 new lines + 3 phones - $200 off per line online - long calculation",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: budget-focused, numbers guy.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Brian Sutherland",
+    "Hi. I'm trying to get the real monthly number before I order. Three new lines on Extra 2.0, 2 Galaxy S26 FE and 1 iPhone 17e, no trade-ins, 36 months financing, zip 77002, no account. The site shows a $200 per line credit for ordering online on an unlimited plan, $5.56 a month for 36 months. Can you work out the monthly total with those credits, and what I'd pay before they start? I'll order on the site once I know.",
+    "no worries tyt, take your time",
+    "Thanks, still here.",
+    "Ok. So the credits start within 3 bills, correct?",
+    "And if I cancel one line before 36 months, I only lose the credit on that line, right?",
+    "Last detail, is shipping free on the new lines or is that extra on the first bill?",
+    "That's more than I wanted to pay at the start, but the numbers are clear now and I appreciate how patient you were with all that math. Great job, I'll rate you well.",
+    "No, that's everything. Thanks, have a good night, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: second wait message (long calculation)",
+    "before message 5: agent: gives the answer/quote",
+    "before message 6: agent: answers the previous question",
+    "before message 7: agent: answers the follow-up",
+    "before message 8: agent: gives the detail / the calculated bill",
+    "before message 9: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

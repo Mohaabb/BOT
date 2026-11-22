@@ -1,0 +1,43 @@
+{
+  "name": "55+ bundle - 2 lines + home internet $99/mo",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: older, polite, a few typos.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Linda Kowalski",
+    "Hello dear, thank you for helping me. My husband and I are both over 55 and we saw on the website that you have 2 phone lines and home internet together for $99 a month. We have our own phones that work with any company. We live in 37203 and have never had AT&T. I wanted to make sure that $99 is the full price each month with the autopay discount, and if fiber internet is even available at our address. We are just looking tonight, we will order on the computer later.",
+    "Oh of course dear, take your time, thank you",
+    "Thank you. Do we both need to be over 55 to get that price?",
+    "I see. And is the internet backup thing included for free with it?",
+    "That sounds wonderful. One more small thing, will there be any extra charges on our first bill besides the $99?",
+    "Thats fine, no hurry.",
+    "Well that is a little more than I planned for the first month but you have been so kind and patient with me, I will tell them you did a wonderful job.",
+    "No dear, that is all. Thank you and have a lovely rest of your day, goodbye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 7: agent: waiting message while calculating the bill",
+    "before message 8: agent: gives the detail / the calculated bill",
+    "before message 9: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

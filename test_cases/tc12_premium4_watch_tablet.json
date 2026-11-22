@@ -1,0 +1,45 @@
+{
+  "name": "4 lines Premium 2.0 + watch and tablet 50% off - long calculation",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: structured, detail-oriented.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Amanda Pierce",
+    "Hello, I'll lay out what I need in order. 1) Four lines on Premium 2.0, we have our own unlocked phones. 2) One cellular Apple Watch line and one tablet line added, and I understand Premium 2.0 gives 50% off one watch or tablet plan per line. 3) I'm in 28202 and have no AT&T account. The site shows $220 a month for the four phone lines. What's the monthly total for everything, including the 50% off? I'm comparing options today and will order online.",
+    "Of course. Take your time, tyt.",
+    "Thank you, still here, no rush.",
+    "Thanks. Does the 50% off apply to both the watch and the tablet, or just one of them per Premium line?",
+    "I see. And when the discount applies, does it show as a credit or is it taken off the line price directly?",
+    "Understood. So what would my first bill be with all taxes and fees included?",
+    "Sure thing, take your time.",
+    "That's a little higher than I expected for the first month, but I appreciate how thorough and kind you were with all my questions. You've earned a very good rating from me.",
+    "No, that's all. Have a great rest of your day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: second wait message (long calculation)",
+    "before message 5: agent: gives the answer/quote",
+    "before message 6: agent: answers the follow-up",
+    "before message 7: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 8: agent: waiting message while calculating the bill",
+    "before message 9: agent: gives the detail / the calculated bill",
+    "before message 10: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

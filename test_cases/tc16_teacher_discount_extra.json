@@ -1,0 +1,41 @@
+{
+  "name": "Teacher discount - 15% off Extra 2.0, 2 lines",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: warm, tired teacher.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Emily Nakamura, hi!",
+    "Hi! Hope your day's going better than mine, I just finished a week of parent-teacher conferences haha. I teach middle school and saw there's a 15% teacher discount on Extra 2.0. My boyfriend and I want 2 lines on Extra 2.0 with our own unlocked phones. We're in 43215 and we're not AT&T customers yet. What would the two lines cost with the discount? Just doing my homework before I order online later.",
+    "no worries tyt, take ur time",
+    "Thank you! Does the 15% apply to both lines or just mine since I'm the teacher?",
+    "That makes sense. What would my first bill look like with all taxes and fees, so I'm not surprised?",
+    "Of course!",
+    "Okay, that's a little more than I was hoping for the first month, but you were so kind and clear, I really appreciate it. I'll definitely give you a great rating!",
+    "Nope, that's all for today! Have a great rest of your day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 6: agent: waiting message while calculating the bill",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

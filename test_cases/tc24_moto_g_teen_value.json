@@ -1,0 +1,41 @@
+{
+  "name": "New line - moto g 2026 for a teen - Value 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: protective dad.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "David Moreno",
+    "Hello, David here. My 15 year old son needs his first phone and I want to keep it simple and safe. One new line on Value 2.0 with the moto g 2026, which the site says is $0 a month on a new line with an unlimited plan. Zip 60601, no AT&T account. What's the total monthly price for the line plus the phone, and how much data does he get? I'm not buying today, just comparing, I'll order online.",
+    "no worries tyt",
+    "Thanks. So it's 5GB of fast data and then it slows down?",
+    "And is there any spam or scam blocking included? He gets a lot of weird texts.",
+    "Good. Last question, how does the phone's $0 work, is it a credit that stays on every month for the 36 months?",
+    "Perfect, that's exactly what I needed. You were patient and really easy to talk to, thank you, you'll get a great rating from me.",
+    "No, that's everything. Have a great rest of your day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

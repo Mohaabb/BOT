@@ -1,0 +1,39 @@
+{
+  "name": "New line - Galaxy Z Flip8 $0 with trade-in - Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-22. Customer voice: enthusiastic, exclamation marks.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Jessica Tran!",
+    "Hi!! I'm SO excited to finally switch to AT&T! I want a new line with the Samsung Galaxy Z Flip8 (the site says $0 a month with eligible trade-in!) and I'd trade in my Galaxy S24, it's paid off and looks brand new. I'm in 60601, no account with you yet. I'm thinking Extra 2.0, what would my monthly total be? Just pricing today, I'm going to order on the website tonight!",
+    "no worries tyt!",
+    "Amazing, thank you! Is the trade-in credit applied automatically or do I have to request it?",
+    "Perfect! And one small question, will the credits show up on my very first bill or later on?",
+    "That's awesome, thank you so much! You were so friendly and helpful, I'm going to leave you a great rating!",
+    "Nope, that's everything! Have an amazing day, bye!!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}
