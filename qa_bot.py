@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 r"""
-qa_bot.py - automated QA tester for the live-agent chat.
-
-Drives a real browser through the chat UI exactly like a person (click, type, read the screen). The site's own
-/v1/ws responses are only READ, to know when the agent has replied; the bot never calls the site's APIs.
 
 Modes (all settings live in bot_settings.json and the Google Sheet - see the setup guide):
   python qa_bot.py --once                 one chat with a test case from test_cases/ (no Sheet needed)
@@ -11,11 +7,6 @@ Modes (all settings live in bot_settings.json and the Google Sheet - see the set
   python qa_bot.py --parallel             launcher: starts parallel_runs workers (local PC version)
   python qa_bot.py --gate-output          GitHub Actions: decide whether to start workers now
 
-Per chat: open site -> chat icon -> initial message -> bot menu -> wait for live agent -> check the agent's ID
-against the Sheet -> scripted messages (each one only after the agent replied, plus reply_delay_seconds) ->
-close (X) -> End chat -> survey (if it appears) -> log the result.
-
-For AUTHORIZED QA testing only: it occupies real agents and submits real CSAT surveys.
 """
 import argparse
 import contextlib
@@ -588,6 +579,10 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
             page.wait_for_timeout(1500)
             return
 
+    if getattr(runner, "final_case", None) is not None and runner.final_case is not tc:
+        tc = runner.final_case          # the opening only got us to the agent; the script is one it hasn't had
+        print(f"         test case for this agent: {tc['name']} ({tc['_file']})")
+
     def reply(text, first):
         """Wait until the agent has written something newer than the last client message (the bot's or
         yours), wait reply_delay_seconds, re-check (a pause or your own typing may have taken the turn), send."""
@@ -950,6 +945,7 @@ def load_state(path):
     if "done" not in d:               # older flat format {agent: n}
         d = {"done": d, "reserved": {}}
     d.setdefault("reserved", {})
+    d.setdefault("used", {})          # {agent: [test cases this agent already had]} - never repeated
     now = time.time()
     for ag in list(d["reserved"]):    # drop reservations from workers that crashed (>60 min old)
         d["reserved"][ag] = {k: t for k, t in d["reserved"][ag].items() if now - t < 3600}
@@ -1053,6 +1049,7 @@ def run_once(page, args, tc, gate, reply_delay=30, reuse=False):
                     agent_wait_timeout_s=args.agent_wait_timeout,
                     turn_wait_timeout_s=args.turn_wait_timeout)
     runner.gate = gate
+    runner.final_case = None
     runner.reply_delay = reply_delay
     runner.failed = False
     runner.run_dir = run_dir
@@ -1361,6 +1358,26 @@ class TestCasePicker:
         return c
 
 
+def case_key(tc):
+    """The name a test case is remembered by in the per-agent history: its file name without .json."""
+    return Path(tc["_file"]).stem
+
+
+def script_pool(args, S, cfg=None):
+    """Test cases an agent may be given: all of them, or just the one in fixed mode / --test-case."""
+    if args.test_case:
+        return [load_test_case(args.test_case)]
+    cfg = cfg or {}
+    cases = list_test_cases(S["test_cases_dir"])
+    mode = (cfg.get("test_case_mode") or S["test_case_mode"] or "random").strip().lower()
+    fixed = (cfg.get("test_case_file") or S["test_case_file"] or "").strip()
+    if mode == "fixed":
+        one = [c for c in cases if fixed in (c["_file"], c["_file"][:-5], c["name"])]
+        if one:
+            return one[:1]
+    return cases
+
+
 # --------------------------------------------------------------------------- quota counters
 class LocalBackend:
     """Counters in a JSON file on this computer, protected by a lock file (parallel workers on ONE machine)."""
@@ -1369,23 +1386,50 @@ class LocalBackend:
     def __init__(self, state_path):
         self.state_path, self.lock = state_path, state_path + ".lock"
 
-    def room(self, agents):
+    def room(self, agents, cases=None):
         st = load_state(self.state_path)
-        return {a: q - st["done"].get(a, 0) - len(st["reserved"].get(a, {})) for a, q in agents.items()}
+        out = {a: q - st["done"].get(a, 0) - len(st["reserved"].get(a, {})) for a, q in agents.items()}
+        if cases:
+            for a in out:
+                if not [c for c in cases if c not in st["used"].get(a, [])]:
+                    out[a] = 0            # already had every test case -> nothing left to do with this agent
+        return out
+
+    @staticmethod
+    def _reserve_in(st, agent, quota, key):
+        mine = st["reserved"].get(agent, {})
+        if key in mine:
+            return True, st["done"].get(agent, 0) + len(mine)
+        used = st["done"].get(agent, 0) + len(mine)
+        if used >= quota:
+            return False, used
+        st["reserved"].setdefault(agent, {})[key] = time.time()
+        return True, used + 1
 
     def reserve(self, agent, quota, wkey, chat_id=None):
-        key = chat_id or wkey
         with file_lock(self.lock):
             st = load_state(self.state_path)
-            mine = st["reserved"].get(agent, {})
-            if key in mine:
-                return True, st["done"].get(agent, 0) + len(mine)
-            used = st["done"].get(agent, 0) + len(mine)
-            if used >= quota:
-                return False, used
-            st["reserved"].setdefault(agent, {})[key] = time.time()
+            ok, used = self._reserve_in(st, agent, quota, chat_id or wkey)
+            if ok:
+                save_state(self.state_path, st)
+            return ok, used
+
+    def reserve_case(self, agent, quota, wkey, chat_id, cases):
+        """One locked step: skip the agent if it already had every test case, else reserve a survey slot and
+        record a random unused test case for it. Returns (granted, used, case, all_cases_used)."""
+        with file_lock(self.lock):
+            st = load_state(self.state_path)
+            had = st["used"].get(agent, [])
+            left = [c for c in cases if c not in had]
+            if not left:
+                return False, None, None, True
+            ok, used = self._reserve_in(st, agent, quota, chat_id or wkey)
+            if not ok:
+                return False, used, None, False
+            case = random.choice(left)
+            st["used"].setdefault(agent, []).append(case)
             save_state(self.state_path, st)
-            return True, used + 1
+            return True, used, case, False
 
     def commit(self, agent, wkey, submitted, entry, fast=False):
         if not agent:
@@ -1433,13 +1477,26 @@ class RemoteBackend:
                 time.sleep(3 * (i + 1) + random.uniform(0, 5))   # spread retries out so workers don't pile up
         raise RuntimeError(f"counter service: {str(last)[:200]}")
 
-    def room(self, agents):
+    def room(self, agents, cases=None):
         r = self._call("room", agents=agents)["room"]
+        if cases:
+            try:
+                left = self._call("case_room", agents=list(agents), cases=list(cases))["left"]
+            except RuntimeError as e:
+                if "unknown action" in str(e):
+                    raise RuntimeError("the Sheet script has no test-case history yet - add History.gs and "
+                                       "redeploy (see the guide)") from None
+                raise
+            r = {k: (0 if int(left.get(str(k).upper(), 1)) <= 0 else v) for k, v in r.items()}
         return {str(k).upper(): int(v) for k, v in r.items()}
 
     def reserve(self, agent, quota, wkey, chat_id=None):
         d = self._call("reserve", agent=agent, quota=quota, worker=wkey, chat_id=chat_id)
         return bool(d.get("granted")), d.get("used")
+
+    def reserve_case(self, agent, quota, wkey, chat_id, cases):
+        d = self._call("reserve_case", agent=agent, quota=quota, worker=wkey, chat_id=chat_id, cases=list(cases))
+        return bool(d.get("granted")), d.get("used"), d.get("case"), bool(d.get("all_cases_used"))
 
     def commit(self, agent, wkey, submitted, entry, fast=False):
         payload = {"agent": agent, "worker": wkey, "submitted": bool(submitted), "entry": entry,
@@ -1625,13 +1682,19 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
         quota = ctl["cfg"]["agents"].get(agent_id)
         if quota is None:
             return False, f"agent {agent_id} is not a target"
+        r = Runner.current
+        opening = ctl["tc"]
+        pool = [c for c in ctl["pool"] if c["menu_path"] == opening["menu_path"]] or [opening]
         try:
-            r = Runner.current
-            ok, used = backend.reserve(agent_id, quota, wkey, getattr(r, "chat_id", None))
+            ok, used, case, all_used = backend.reserve_case(agent_id, quota, wkey, getattr(r, "chat_id", None),
+                                                            [case_key(c) for c in pool])
         except Exception as e:  # noqa: BLE001
             return False, f"counter service unreachable ({str(e)[:80]})"
+        if all_used:
+            return False, f"agent {agent_id} already had all {len(pool)} test case(s)"
         if not ok:
             return False, f"agent {agent_id} already has {used}/{show_quota(quota)} surveys (incl. chats in progress)"
+        r.final_case = next((c for c in pool if case_key(c) == case), opening)
         return True, None
 
     def closed_should_exit():
@@ -1702,19 +1765,22 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
             continue
         seen_open = True
         try:
-            if room_cache["t"] and time.time() - room_cache["t"] < 90 and room_cache["agents"] == cfg["agents"]:
+            ctl["pool"] = script_pool(args, S, cfg)
+            names = sorted(case_key(c) for c in ctl["pool"])
+            if room_cache["t"] and time.time() - room_cache["t"] < 90 and room_cache["agents"] == cfg["agents"] \
+                    and room_cache.get("names") == names:
                 room = room_cache["room"]
             else:
-                room = {a: n for a, n in backend.room(cfg["agents"]).items() if n > 0}
-                room_cache.update(t=time.time(), room=room, agents=dict(cfg["agents"]))
+                room = {a: n for a, n in backend.room(cfg["agents"], names).items() if n > 0}
+                room_cache.update(t=time.time(), room=room, agents=dict(cfg["agents"]), names=names)
         except Exception as e:  # noqa: BLE001
             say(f"counter service unreachable ({str(e)[:100]}); retrying in 60s")
             idle(60)
             continue
         if not room:
             close_browser()
-            say("every agent in the list has reached its survey quota (or the list is empty); waiting for "
-                "sheet changes")
+            say("every agent in the list has reached its survey quota or already had every test case (or the "
+                "list is empty); waiting for sheet changes")
             if S["exit_after_window"] and time.time() - started > 60:
                 print(f"{tag}nothing left to do this run - exiting.")
                 return 0
@@ -1733,6 +1799,7 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
                   f"run takes over.")
             return 0
         tc = picker.pick(cfg)
+        ctl["tc"] = tc                 # opening + menu only; the agent's own test case is chosen once its ID is known
         print(f"\n{tag}{wtxt}; surveys still open: { {a: show_quota(n) for a, n in sorted(room.items())} }; "
               f"test case: {tc['name']}")
         last_msg = None
@@ -1746,6 +1813,7 @@ def _scheduler_body(pw, args, S, ctl, log_path, backend, picker):
             br["page"] = br["ctx"].pages[0] if br["ctx"].pages else br["ctx"].new_page()
         try:
             runner = run_once(br["page"], args, tc, gate, cfg["reply_delay_seconds"], reuse=reused)
+            tc = runner.final_case or tc
         except Exception:  # noqa: BLE001 - the browser itself died
             close_browser()
             raise
@@ -1837,9 +1905,10 @@ def gate_main(args, S):
         elif not list_test_cases(S["test_cases_dir"]) and not args.test_case:
             reason = f"no valid test cases in {S['test_cases_dir']}"
         else:
-            room = make_backend(args, S).room(cfg["agents"])
+            room = make_backend(args, S).room(cfg["agents"], [case_key(c) for c in script_pool(args, S, cfg)])
             if not any(v > 0 for v in room.values()):
-                reason = "every agent in the list has reached its survey quota (or the list is empty)"
+                reason = ("every agent in the list has reached its survey quota or already had every test case "
+                          "(or the list is empty)")
             else:
                 out = {"open": "true", "workers": json.dumps(list(range(1, n + 1)))}
                 reason = f"window open ({wtxt}) - starting {n} worker(s)"
@@ -2032,4 +2101,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
