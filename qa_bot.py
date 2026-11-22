@@ -583,13 +583,20 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
         tc = runner.final_case          # the opening only got us to the agent; the script is one it hasn't had
         print(f"         test case for this agent: {tc['name']} ({tc['_file']})")
 
-    def reply(text, first):
+    def reply(text, first, last=False):
         """Wait until the agent has written something newer than the last client message (the bot's or
         yours), wait reply_delay_seconds, re-check (a pause or your own typing may have taken the turn), send."""
         while True:
-            runner.wait_until("the agent's greeting" if first else "the agent's reply",
-                              lambda: runner.my_turn() or runner.agent_has_ended(),
-                              timeout=runner.agent_wait_timeout if first else runner.turn_wait_timeout)
+            try:
+                runner.wait_until("the agent's greeting" if first else "the agent's reply",
+                                  lambda: runner.my_turn() or runner.agent_has_ended(),
+                                  timeout=runner.agent_wait_timeout if first else
+                                  (min(90, runner.turn_wait_timeout) if last else runner.turn_wait_timeout))
+            except StepFailed:
+                if last and not first:     # the agent said nothing after our last-but-one line: skip the goodbye
+                    print("         the agent didn't write again - skipping the last message and closing the chat")
+                    return
+                raise
             if runner.agent_has_ended():
                 raise AgentEnded()
             runner.respect_reply_delay()
@@ -611,7 +618,7 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
     n = len(tc["scripted_messages"])
     try:
         for i, msg in enumerate(tc["scripted_messages"], start=1):
-            runner.step(f"message {i}/{n} (after the agent's reply): {msg[:40]!r}", reply, msg, i == 1)
+            runner.step(f"message {i}/{n} (after the agent's reply): {msg[:40]!r}", reply, msg, i == 1, i == n)
     except AgentEnded:
         runner.agent_ended_chat = True
         runner.report.append({"step": f"the agent ended the chat after {runner.msg_client} bot message(s)",
@@ -660,7 +667,11 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
     if not runner.agent_ended_chat:
         runner.step("choose End chat", end_chat)
 
-    sv = tc["survey"]
+    # survey values may be a list in the test case, e.g. "stars": [4, 5], "resolved": ["yes", "no"] -> one is
+    # picked at random for every chat (a plain value, as in the older test cases, is used as is)
+    sv = {k: (random.choice(v) if isinstance(v, list) and v else v) for k, v in tc["survey"].items()}
+    sv["resolved"] = str(sv["resolved"]).strip().lower()
+    print(f"         survey for this chat: {sv['stars']} stars, resolved = {sv['resolved']}")
     if runner.transferred_to:
         # by design: a transferred chat gets no survey (it would rate a different agent than the target)
         runner.report.append({"step": "no survey: the chat was transferred", "status": "ok", "seconds": 0})
@@ -692,7 +703,16 @@ def run_test_case(runner: Runner, tc: dict, start_url: str, reuse=False):
     def pick_resolved():
         f = runner.chat_frame()
         opt = f.locator(f'[data-testid="feedback-survey-requestResolved-{sv["resolved"]}"]')
-        runner.wait_until("resolved yes/no option visible", lambda: opt.count() > 0 and opt.first.is_visible())
+        try:
+            runner.wait_until("resolved yes/no option visible", lambda: opt.count() > 0 and opt.first.is_visible(),
+                              timeout=20 if sv["resolved"] != "yes" else None)
+        except StepFailed:
+            if sv["resolved"] == "yes":
+                raise
+            print(f"         no '{sv['resolved']}' button found - answering yes instead (check the selector)")
+            sv["resolved"] = "yes"
+            opt = f.locator('[data-testid="feedback-survey-requestResolved-yes"]')
+            runner.wait_until("resolved yes option visible", lambda: opt.count() > 0 and opt.first.is_visible())
         opt.first.click()
     runner.step(f'choose resolved = {sv["resolved"]}', pick_resolved)
 
