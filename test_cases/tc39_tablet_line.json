@@ -1,0 +1,41 @@
+{
+  "name": "Add a cellular tablet line",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: older gentleman, slow typist.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Walter Hendricks",
+    "Good afternoon. I would like to add an iPad with cellular service to my account for travel. I understand a tablet line is $20.99 a month. Is there any discount on it with my phone plan, which is Premium 2.0?",
+    "Of course, take your time.",
+    "Thank you. Is the 50 percent discount for one tablet per phone line?",
+    "What would the monthly cost for the tablet line come to after the discount?",
+    "Take your time.",
+    "That is very reasonable. Thank you for your patience with me, you were very kind.",
+    "No, that is all. Have a good day, goodbye."
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 6: agent: waiting message while calculating the bill",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

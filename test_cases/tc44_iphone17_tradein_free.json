@@ -1,0 +1,39 @@
+{
+  "name": "Add a line - iPhone 17 $0 with trade-in - Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: soft-spoken, careful.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Rachel Kim",
+    "Hello, I hope you're doing well. I'd like to add one line with the iPhone 17, which shows $0 with an eligible trade-in. I have an iPhone 13 in good condition. On Extra 2.0, what would my monthly total be?",
+    "Of course, take your time.",
+    "Thank you. Does the trade-in need to be in good condition for the $0?",
+    "And how long do I have to send in my old phone?",
+    "Thank you, that's clear. You were very kind and patient with me.",
+    "No, that's all. Have a lovely day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

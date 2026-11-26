@@ -1,0 +1,41 @@
+{
+  "name": "Add a line - Galaxy S26 Ultra from $5.56 with trade-in - Premium 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: detail-oriented engineer.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Marcus Webb",
+    "Hello. I want a Galaxy S26 Ultra on a new line. The site shows it as low as $5.56 a month with an eligible trade-in, and I'd trade in a Galaxy S23 that works and has no damage. Under Premium 2.0, what is the combined monthly amount for the plan and the phone, and how much hotspot data comes with the plan?",
+    "Sure, no rush.",
+    "Understood. Is $5.56 the lowest price, and what would raise it?",
+    "Okay. And what would the first bill be, with fees and taxes included?",
+    "No problem, take your time.",
+    "Got it. That's reasonable. Thanks for the clear breakdown, you were very professional and friendly.",
+    "That's everything. Have a good evening, bye."
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 6: agent: waiting message while calculating the bill",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

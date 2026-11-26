@@ -1,0 +1,43 @@
+{
+  "name": "New line - $200 off per line when ordering online",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: deal hunter.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Brianna Foster",
+    "Hi! I'm trying to understand the online-only $200 off per line deal. I want to add two new lines on Premium 2.0 with the iPhone 17 Pro at $9.99 a month each. How does the $200 get applied, and what would my monthly total be for both lines?",
+    "Sure thing, no rush!",
+    "Thanks. Is the $200 a bill credit over the 36 months?",
+    "And do I need to order online for it to count?",
+    "What would the first bill look like with fees and taxes for both lines?",
+    "Take your time!",
+    "Okay, that's more than I figured for month one, but you explained everything really well. Thank you for being so friendly.",
+    "That's all. Have a great day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 7: agent: waiting message while calculating the bill",
+    "before message 8: agent: gives the detail / the calculated bill",
+    "before message 9: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

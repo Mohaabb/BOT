@@ -1,0 +1,39 @@
+{
+  "name": "New line - razr+ 2026 $9.99 - Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: cheerful, a bit chatty.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Priya Nair",
+    "Hello! I love the look of the motorola razr+ 2026, and the site says $9.99 a month with a new line on an eligible unlimited plan, no trade-in. What would one line on Extra 2.0 plus the phone cost per month, and are there speed restrictions I should know about?",
+    "Sure, no problem at all.",
+    "Thank you! Which plans count as eligible unlimited plans?",
+    "And is the price the same if I add the line online or through chat?",
+    "Great, that clears it up. You were wonderful and so easy to talk to, thank you!",
+    "No, that's all. Have a lovely day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

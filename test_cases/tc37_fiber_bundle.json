@@ -1,0 +1,39 @@
+{
+  "name": "Wireless plus Fiber bundle - 300Mbps and Premium 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: practical homeowner.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Greg Palmer",
+    "Hello. I'm interested in bundling AT&T Fiber with a wireless line. The site shows Fiber 300Mbps for $35 a month for the first year. If I add one line on Premium 2.0, what would I pay monthly in total, and what happens after the first year?",
+    "Sure, take your time.",
+    "Thanks. Is there a bundle discount on the wireless side too?",
+    "And is there an installation fee for Fiber?",
+    "Alright, that gives me what I need. You were friendly and thorough, thank you.",
+    "That's all for today. Have a good one, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

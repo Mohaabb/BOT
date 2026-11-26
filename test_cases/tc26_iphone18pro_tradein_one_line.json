@@ -1,0 +1,39 @@
+{
+  "name": "Add a line - iPhone 18 Pro $0 with iPhone trade-in - Premium 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: calm, polite retiree.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Robert Callahan",
+    "Thank you, good afternoon. I'd like to add one new line to be used with an iPhone 18 Pro. I saw it listed at $0 a month with an eligible iPhone trade-in, and I have an iPhone 14 that works fine and has no cracks. I'm leaning toward Premium 2.0. What would the monthly total be for that one line, and is the phone really $0?",
+    "Of course, take your time.",
+    "Thank you. Does the $0 on the phone last for the whole 36 months?",
+    "One small thing, is the trade-in credit applied all at once or spread over the months?",
+    "I see, that's clear now. You were very patient and kind with an old man's questions, I really appreciate it.",
+    "No, that's all. Have a lovely day, goodbye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

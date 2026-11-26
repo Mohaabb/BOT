@@ -1,0 +1,39 @@
+{
+  "name": "New line - iPhone Air $0.99 - Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: thoughtful design student.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Hannah Cho",
+    "Hi! I'm a student and I've wanted an iPhone Air forever. Your site says $0.99 a month with a new line and an eligible plan, no trade-in. Could you tell me the total monthly cost for one line with Extra 2.0, and whether the student discount applies to it?",
+    "No problem, take your time.",
+    "Thanks! Which plans does the student discount work on?",
+    "Does it need some kind of verification, like a student email?",
+    "That's really helpful, thank you. You were super kind and patient, it made this so much less stressful.",
+    "Nope, that's all. Have a great day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

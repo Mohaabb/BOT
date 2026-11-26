@@ -1,0 +1,39 @@
+{
+  "name": "New line - Pixel 10a $8.99 - Value 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: frugal student.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Omar Haddad",
+    "Hey. I need an affordable phone, so I'm looking at the Pixel 10a at $8.99 a month. I'd be adding one new line on Value 2.0. What's the total I'd pay each month, and how much high speed data do I get?",
+    "np tyt",
+    "Thanks. What happens after the 5GB runs out?",
+    "And is the $8.99 locked in for the whole 36 months?",
+    "Ok, that works for me. Thanks, you were fast and friendly.",
+    "That's all. Thanks, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

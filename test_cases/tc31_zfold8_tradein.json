@@ -1,0 +1,41 @@
+{
+  "name": "Switch - Galaxy Z Fold8 as low as $0 with trade-in - Premium 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: enthusiastic gadget lover.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Derek Ishikawa",
+    "Hey! I'm switching from Verizon and want the Galaxy Z Fold8. The page says as low as $0 a month with trade-in. I have a Galaxy Z Fold5 in good shape. On Premium 2.0, what would my monthly total be, and how much of the phone price does the trade-in cover?",
+    "no worries tyt",
+    "Nice. And does the switcher reward card of up to $800 apply on top of that?",
+    "Is that reward paid right away or later?",
+    "Last one, do I need to do anything to redeem it?",
+    "Awesome, that's super clear. You were awesome and really patient with all my questions, thank you!",
+    "That's all! Have a great one, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

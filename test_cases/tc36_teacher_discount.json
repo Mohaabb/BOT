@@ -1,0 +1,39 @@
+{
+  "name": "Appreciation Savings - teacher on Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: warm, talkative teacher.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Melissa Greene",
+    "Hi! I'm a teacher and I'd like to add one new line on Extra 2.0 with the Galaxy A57 5G, which shows $5.99 a month with a new line. Does the teacher discount apply to Extra 2.0, and what would my monthly total be?",
+    "No problem, take your time!",
+    "Great. Is it 15 percent on Extra 2.0?",
+    "How do I prove I'm a teacher?",
+    "That's perfect, thank you. You were kind and so helpful, it's nice to talk to someone this patient.",
+    "No, that's all. Have a great day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

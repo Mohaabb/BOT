@@ -1,0 +1,41 @@
+{
+  "name": "Question - activation fee and AutoPay discount on a new line",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: analytical, wants numbers.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Nina Patel",
+    "Hi. Before I add a new line on Extra 2.0, I want to understand the fees. The plan page mentions an activation fee up to $50 and a cost recovery fee up to $4.99 per line. Can you explain what I'd pay on the first bill, and how the AutoPay discount of $10 would work?",
+    "Sure, take your time.",
+    "Thanks. Is the activation fee charged once?",
+    "Okay. And what would the first bill be in total with everything included?",
+    "No problem.",
+    "Got it, that's clearer than the website. You were so patient and friendly, thank you.",
+    "That's all, have a great day, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 6: agent: waiting message while calculating the bill",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

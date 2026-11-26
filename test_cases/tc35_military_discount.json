@@ -1,0 +1,39 @@
+{
+  "name": "Appreciation Savings - military on Premium 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: respectful veteran.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "James Holloway",
+    "Good morning. I'm a veteran and want to see what the Appreciation Savings would do for me on one line of Premium 2.0, and how I'd prove my status. I'd also like the Galaxy S26 FE, which shows at $0 a month with a new line. What would my monthly total be?",
+    "Certainly, take your time.",
+    "Thank you. Is the discount 20 percent on Premium 2.0?",
+    "And does my spouse qualify for it too if she gets her own line?",
+    "Thank you, that's very helpful. You were courteous and clear, and I appreciate your time.",
+    "No, that's all. Have a good day, goodbye."
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the follow-up",
+    "before message 6: agent: gives the detail / the calculated bill",
+    "before message 7: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "New line - iPhone 17 Pro Max $14.99 no trade-in - Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: fast, upbeat young professional.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Tyler Brooks",
+    "Hey! Adding a new line for a work phone, and I want the iPhone 17 Pro Max which your site shows at $14.99 a month with a new line and no trade-in. Which plan would you suggest between Extra 2.0 and Premium 2.0 for heavy streaming, and what would the total monthly be on each?",
+    "No worries tyt",
+    "Nice. Is that $14.99 including the extra $5.56 credit you guys mention?",
+    "And does that credit stay the same all 36 months?",
+    "One more, what would the first bill be with the activation fee and taxes?",
+    "Take your time!",
+    "Okay, that's a bit more than I figured for month one, but you explained it all really well and I appreciate how friendly you were.",
+    "That's it for me. Have a great one, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up (a bill question usually gets 'please allow me a moment to calculate')",
+    "before message 7: agent: waiting message while calculating the bill",
+    "before message 8: agent: gives the detail / the calculated bill",
+    "before message 9: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

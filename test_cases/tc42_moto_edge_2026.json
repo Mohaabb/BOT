@@ -1,0 +1,41 @@
+{
+  "name": "New line - Motorola edge 2026 $5.99 - Extra 2.0",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: easygoing, mid-30s.",
+  "initial_message": "chat with a live agent",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Jason Whitaker",
+    "Hey there! I'm thinking about the Motorola edge 2026, which shows at $5.99 a month with a new line and no trade-in. I'd put it on Extra 2.0. What's the monthly total, and does the plan include talk and text in Canada and Mexico?",
+    "No worries, tyt!",
+    "Awesome. Is 100GB the high speed limit before slowing?",
+    "And is hotspot included?",
+    "Quick one, how many GB of hotspot do I get?",
+    "Perfect, thanks! You were friendly and really easy to talk to.",
+    "That's all. Have a great one, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}

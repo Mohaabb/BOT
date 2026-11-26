@@ -1,0 +1,41 @@
+{
+  "name": "Existing customer - Next Up Anytime early upgrade",
+  "description": "Offers checked on att.com/buy/phones and att.com/bundles/internet-wireless on 2026-11-25. Customer voice: laid-back, short sentences.",
+  "initial_message": "live representative",
+  "menu_path": [
+    "AT&T Wireless",
+    "Shopping"
+  ],
+  "scripted_messages": [
+    "Chris Donovan",
+    "Hi. I'm an existing customer and curious about Next Up Anytime. The site says early upgrades cost an extra $10 a month and allow up to 3 upgrades in 12 months. How does it work if I want to upgrade to a new iPhone, and what happens to my current phone?",
+    "Sure, take your time.",
+    "Ok. Is the $10 added to my monthly bill?",
+    "And can I cancel it later?",
+    "One detail, when does the first upgrade become available after signing up?",
+    "Got it, makes sense. Appreciate your help and how friendly you were.",
+    "That's all. Thanks, bye!"
+  ],
+  "_expected_agent_flow": [
+    "before message 1: agent: greeting, asks for first and last name",
+    "before message 2: agent: welcomes the customer, asks how they can help",
+    "before message 3: agent: 'please give me a moment' while checking",
+    "before message 4: agent: gives the answer/quote",
+    "before message 5: agent: answers the previous question",
+    "before message 6: agent: answers the follow-up",
+    "before message 7: agent: gives the detail / the calculated bill",
+    "before message 8: agent: 'Is there anything else I can help you with today?'"
+  ],
+  "end_chat_button_text": "End chat",
+  "survey": {
+    "stars": [
+      4,
+      5
+    ],
+    "resolved": [
+      "yes",
+      "no"
+    ],
+    "comment": ""
+  }
+}
